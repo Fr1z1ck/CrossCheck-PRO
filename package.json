@@ -1,0 +1,58 @@
+{
+  "name": "crosscheck-sbis",
+  "productName": "CrossCheck SBIS",
+  "version": "1.0.0",
+  "description": "Система сравнения заказов и собранных товаров для быстрого выявления расхождений",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win --x64",
+    "build-win-portable": "electron-builder --win portable --x64"
+  },
+  "keywords": [
+    "crosscheck",
+    "sbis",
+    "comparison",
+    "scanner"
+  ],
+  "author": {
+    "name": "Fr1z1ck",
+    "email": "example@example.com"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.fr1z1ck.crosschecksbis",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/",
+      "!node_modules/",
+      "!build/",
+      "!.gitignore",
+      "!.git/"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "crosscheck sbis.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "CrossCheck SBIS"
+    },
+    "portable": {
+      "artifactName": "CrossCheckSBIS-Portable-${version}.exe"
+    }
+  }
+} 
