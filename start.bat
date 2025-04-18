@@ -1,0 +1,3 @@
+@echo off
+echo Запуск CrossCheck SBIS...
+npm start 
