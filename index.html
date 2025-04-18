@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Система сравнения заказов и собранных товаров для быстрого выявления расхождений">
+    <title>Система сравнения заказов</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Локальная версия библиотеки XLSX -->
+    <script src="libs/xlsx.full.min.js"></script>
+    <!-- Резервная CDN версия библиотеки XLSX -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Проверка и резервная загрузка библиотеки XLSX -->
+    <script>
+        // Функция для проверки, загружена ли библиотека XLSX
+        function checkXLSXLoaded() {
+            if (typeof XLSX === 'undefined') {
+                console.log('XLSX не загружен, пробуем альтернативный CDN...');
+                // Создаем новый элемент script
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                script.async = true;
+                script.onload = function() {
+                    console.log('XLSX успешно загружен с альтернативного CDN');
+                };
+                script.onerror = function() {
+                    console.error('Не удалось загрузить XLSX с альтернативного CDN');
+                    alert('Ошибка загрузки библиотеки XLSX. Приложение может работать некорректно. Попробуйте обновить страницу или проверьте подключение к интернету.');
+                };
+                document.head.appendChild(script);
+            } else {
+                console.log('XLSX успешно загружен');
+            }
+        }
+        
+        // Выполняем проверку после загрузки страницы
+        window.addEventListener('load', checkXLSXLoaded);
+    </script>
+</head>
+<body class="classic-theme">
+    <!-- Плашка уведомления об обновлении (скрыта по умолчанию) -->
+    <div id="updateNotificationBar" class="update-notification-bar" style="display: none;">
+        <span id="updateNotificationText"></span>
+        <button id="updateNotificationInstallBtn" class="btn btn-small primary-btn" style="display: none;">Установить</button>
+        <button id="updateNotificationSettingsBtn" class="btn btn-small secondary-btn">Настройки</button>
+        <button id="updateNotificationCloseBtn" class="icon-btn close-notification-btn" title="Закрыть уведомление">&times;</button>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-box-check"></i> Система сравнения заказов</h1>
+            <div class="header-controls">
+                <button id="guideBtn" class="btn icon-btn" title="Руководство пользователя">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+                <button id="settingsBtn" class="btn icon-btn" title="Настройки внешнего вида">
+                    <i class="fas fa-gear"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Зона загрузки файлов -->
+        <div class="file-upload-section">
+            <h2 class="section-title">
+                <i class="fas fa-file-upload"></i>
+                Загрузка файлов
+            </h2>
+            
+            <div id="dropZone">
+                <div class="upload-decoration">
+                    <div class="decoration-circle circle1"></div>
+                    <div class="decoration-circle circle2"></div>
+                    <div class="decoration-circle circle3"></div>
+                </div>
+                
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                
+                <label for="fileInput" class="file-label">
+                    Выберите файлы для сравнения
+                </label>
+                
+                <p class="file-hint">
+                    Перетащите файлы в эту область или нажмите кнопку ниже для выбора через диалог
+                    <br><small>(заказ МС и сканирование СБИС)</small>
+                    <br><small class="file-format-hint">Поддерживаемые форматы: Excel (.xls, .xlsx)</small>
+                </p>
+                
+                <input type="file" id="fileInput" class="file-input" multiple accept=".xlsx,.xls" style="display: none;">
+                
+                <button class="select-files-btn">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Выбрать файлы</span>
+                </button>
+            </div>
+            
+            <!-- Контейнер для отображения выбранных файлов -->
+            <div id="selectedFiles"></div>
+            
+            <div class="button-group">
+                <button id="analyzeBtn" class="analyze-btn" disabled>
+                    <i class="fas fa-search"></i>
+                    <span>Сравнить файлы</span>
+                </button>
+                <button id="resetBtn" class="reset-btn">
+                    <i class="fas fa-times"></i>
+                    <span>Сбросить</span>
+                </button>
+            </div>
+        </div>
+
+        <main class="results-section" id="results">
+            <h2><i class="fas fa-chart-bar"></i> Результаты сравнения</h2>
+            
+            <div class="stats-container" id="statsContainer" style="display: none;">
+                <h3><i class="fas fa-chart-pie"></i> Сводная статистика</h3>
+                <div class="stats-grid">
+                    <div class="stat-item" title="Общее количество товаров в заказе">
+                        <i class="fas fa-boxes fa-lg" style="color: var(--primary-color); margin-bottom: 0.5rem;"></i>
+                        <span class="stat-label">Товаров в заказе МС</span>
+                        <span class="stat-value" id="orderItems">0</span>
+                    </div>
+                    <div class="stat-item" title="Общее количество товаров в СБИС">
+                        <i class="fas fa-barcode fa-lg" style="color: var(--primary-color); margin-bottom: 0.5rem;"></i>
+                        <span class="stat-label">Товаров в СБИС</span>
+                        <span class="stat-value" id="scanItems">0</span>
+                    </div>
+                    <div class="stat-item missing" title="Товары из заказа, которых нет в СБИС">
+                        <i class="fas fa-times-circle fa-lg" style="color: var(--missing-text); margin-bottom: 0.5rem;"></i>
+                        <span class="stat-label">Отсутствующих товаров</span>
+                        <span class="stat-value" id="missingItems">0</span>
+                    </div>
+                    <div class="stat-item extra" title="Товары в СБИС, которых нет в заказе">
+                        <i class="fas fa-plus-circle fa-lg" style="color: var(--extra-text); margin-bottom: 0.5rem;"></i>
+                        <span class="stat-label">Избыточных товаров</span>
+                        <span class="stat-value" id="extraItems">0</span>
+                    </div>
+                    <div class="stat-item mismatch" title="Количество товаров с несоответствием количества">
+                        <i class="fas fa-exchange-alt fa-lg" style="color: var(--mismatch-text); margin-bottom: 0.5rem;"></i>
+                        <span class="stat-label">Несоответствие количества</span>
+                        <span class="stat-value" id="quantityMismatches">0</span>
+                    </div>
+                    <div class="stat-item incomplete" title="Количество товаров без штрих-кода или количества">
+                        <i class="fas fa-exclamation-circle fa-lg" style="color: #9333ea; margin-bottom: 0.5rem;"></i>
+                        <span class="stat-label">Некорректные позиции</span>
+                        <span class="stat-value" id="incompleteItems">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tabs" role="tablist">
+                <button class="tab-btn active" data-tab="all" role="tab" aria-selected="true" title="Показать все товары">
+                    <i class="fas fa-list"></i> Все товары
+                </button>
+                <button class="tab-btn" data-tab="scan" role="tab" aria-selected="false" title="Показать товары из СБИС">
+                    <i class="fas fa-barcode"></i> Товары в СБИС
+                </button>
+                <button class="tab-btn" data-tab="errors" role="tab" aria-selected="false" title="Показать товары с ошибками">
+                    <i class="fas fa-exclamation-triangle"></i> Ошибки
+                </button>
+                <button class="tab-btn" data-tab="missing" role="tab" aria-selected="false" title="Показать отсутствующие товары">
+                    <i class="fas fa-times-circle"></i> Отсутствующие
+                </button>
+                <button class="tab-btn" data-tab="extra" role="tab" aria-selected="false" title="Показать избыточные товары">
+                    <i class="fas fa-plus-circle"></i> Избыточные
+                </button>
+                <button class="tab-btn" data-tab="mismatch" role="tab" aria-selected="false" title="Показать товары с несоответствием количества">
+                    <i class="fas fa-exchange-alt"></i> Несоответствия
+                </button>
+                <button class="tab-btn" data-tab="incomplete" role="tab" aria-selected="false" title="Показать товары без штрих-кода или количества">
+                    <i class="fas fa-exclamation-circle"></i> Некорректные
+                </button>
+                <button class="tab-btn" data-tab="checked" role="tab" aria-selected="false" title="Показать отмеченные товары">
+                    <i class="fas fa-check-square"></i> Отмеченные
+                </button>
+            </div>
+
+            <!-- Фильтр и сортировка для результатов -->
+            <div class="filter-sort">
+                <div class="search-icon">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="filterInput" placeholder="Поиск по артикулу или наименованию..." aria-label="Фильтр товаров" title="Введите текст для поиска товаров по коду или наименованию">
+                </div>
+                <button id="resetCheckedBtn" class="control-btn reset-checked-btn" title="Сбросить все отмеченные позиции">
+                    <i class="fas fa-times-circle"></i> Сбросить
+                </button>
+                <!-- Кнопка для переключения отметок всех немаркированных товаров -->
+                <button id="checkUnmarkedBtn" class="control-btn check-unmarked-btn" title="Отметить/снять отметку со всех товаров без маркировки во всех вкладках">
+                    <i class="fas fa-tags"></i>
+                    <span>Переключить без (М)</span>
+                </button>
+                <!-- Кнопка экспорта в Excel -->
+                <button id="exportExcelBtn" class="control-btn export-excel-btn" title="Экспортировать результаты в Excel">
+                    <i class="fas fa-file-excel"></i>
+                    <span>Экспорт</span>
+                </button>
+            </div>
+
+            <div class="tab-content active" id="allTab" role="tabpanel" aria-labelledby="all-tab">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
+                            <th title="Нажмите для сортировки по коду товара">Код</th>
+                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
+                            <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
+                            <th title="Нажмите для сортировки по статусу">Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allTable"></tbody>
+                </table>
+            </div>
+
+            <div class="tab-content" id="scanTab" role="tabpanel" aria-labelledby="scan-tab">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
+                            <th title="Нажмите для сортировки по коду товара">Код</th>
+                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
+                            <th title="Нажмите для сортировки по статусу">Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scanTable"></tbody>
+                </table>
+            </div>
+
+            <div class="tab-content" id="errorsTab" role="tabpanel" aria-labelledby="errors-tab">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
+                            <th title="Нажмите для сортировки по коду товара">Код</th>
+                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
+                            <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
+                            <th title="Нажмите для сортировки по проблеме">Проблема</th>
+                        </tr>
+                    </thead>
+                    <tbody id="errorsTable"></tbody>
+                </table>
+            </div>
+
+            <div class="tab-content" id="missingTab" role="tabpanel" aria-labelledby="missing-tab">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
+                            <th title="Нажмите для сортировки по коду товара">Код</th>
+                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
+                        </tr>
+                    </thead>
+                    <tbody id="missingTable"></tbody>
+                </table>
+            </div>
+
+            <div class="tab-content" id="extraTab" role="tabpanel" aria-labelledby="extra-tab">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
+                            <th title="Нажмите для сортировки по коду товара">Код</th>
+                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
+                        </tr>
+                    </thead>
+                    <tbody id="extraTable"></tbody>
+                </table>
+            </div>
+
+            <div class="tab-content" id="mismatchTab" role="tabpanel" aria-labelledby="mismatch-tab">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
+                            <th title="Нажмите для сортировки по коду товара">Код</th>
+                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
+                            <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
+                            <th title="Нажмите для сортировки по разнице в количестве">Разница</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mismatchTable"></tbody>
+                </table>
+            </div>
+
+            <div class="tab-content" id="incompleteTab" role="tabpanel" aria-labelledby="incomplete-tab">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
+                            <th title="Нажмите для сортировки по коду товара">Код</th>
+                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по проблеме">Проблема</th>
+                        </tr>
+                    </thead>
+                    <tbody id="incompleteTable"></tbody>
+                </table>
+            </div>
+            
+            <div class="tab-content" id="checkedTab" role="tabpanel" aria-labelledby="checked-tab">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
+                            <th title="Нажмите для сортировки по коду товара">Код</th>
+                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
+                            <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
+                            <th title="Нажмите для сортировки по статусу">Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="checkedTable"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно настроек -->
+    <div id="settingsModal" class="modal" role="dialog" aria-labelledby="settingsModalTitle" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="settingsModalTitle"><i class="fas fa-gear"></i> Настройки</h3>
+                <span class="close-modal" aria-label="Закрыть" title="Закрыть настройки"><i class="fas fa-times"></i></span>
+            </div>
+            <div class="modal-body settings-modal-body">
+                <div class="settings-section">
+                    <h4><i class="fas fa-palette"></i> Внешний вид</h4>
+                    <h5>Выберите тему оформления:</h5>
+                    <div class="theme-options">
+                        <div class="theme-option" data-theme="classic">
+                            <div class="theme-preview classic-preview">
+                                <div class="theme-preview-header">Светлая тема</div>
+                                <div class="theme-preview-body">
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="theme-option" data-theme="dark">
+                            <div class="theme-preview dark-preview">
+                                <div class="theme-preview-header">Тёмная тема</div>
+                                <div class="theme-preview-body">
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="theme-option" data-theme="night">
+                            <div class="theme-preview night-preview">
+                                <div class="theme-preview-header">Ночная тема</div>
+                                <div class="theme-preview-body">
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="theme-option" data-theme="light">
+                            <div class="theme-preview light-preview">
+                                <div class="theme-preview-header">Светлая Альт.</div>
+                                <div class="theme-preview-body">
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="theme-option" data-theme="custom">
+                            <div class="theme-preview custom-preview">
+                                <div class="theme-preview-header">Мятная тема</div>
+                                <div class="theme-preview-body">
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                        <div class="theme-preview-row"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5><i class="fas fa-text-height"></i> Размер шрифта:</h5>
+                    <div class="font-size-control">
+                        <span class="font-size-label">A<sub>-</sub></span>
+                        <input type="range" id="fontSizeSlider" min="80" max="120" step="5" value="100" aria-label="Размер шрифта" title="Перетащите для изменения размера шрифта">
+                        <span class="font-size-label">A<sup>+</sup></span>
+                        <span class="font-size-value" id="fontSizeValue">100%</span>
+                    </div>
+                    
+                    <h5><i class="fas fa-search"></i> Масштаб интерфейса:</h5>
+                    <div class="ui-scale-control">
+                        <span class="scale-label"><i class="fas fa-search-minus"></i></span>
+                        <input type="range" id="uiScaleSlider" min="70" max="130" step="5" value="100" aria-label="Масштаб интерфейса" title="Перетащите для изменения масштаба интерфейса">
+                        <span class="scale-label"><i class="fas fa-search-plus"></i></span>
+                        <span class="scale-value" id="uiScaleValue">100%</span>
+                    </div>
+                </div>
+
+                <div class="settings-section about-section">
+                    <h4><i class="fas fa-info-circle"></i> О программе</h4>
+                    <p class="about-text">Система контроля товаров разработана для быстрого сравнения заказов и фактического наличия товаров.</p>
+                    
+                    <!-- Элементы управления обновлением перенесены сюда -->
+                    <div class="update-controls" style="margin-top: 1rem; margin-bottom: 1rem;"> 
+                        <span id="updateStatus" class="update-status-text">Нажмите кнопку для проверки...</span>
+                        <div class="update-progress" style="display: none;">
+                            <div class="update-progress-bar">
+                                <div id="updateProgressBarInner" style="width: 0%;"></div>
+                            </div>
+                            <span class="update-progress-text" id="updateProgressText">0%</span>
+                        </div>
+                        <div class="update-buttons">
+                            <button id="updateCheckBtnNew" class="btn secondary-btn">
+                                <i class="fas fa-sync-alt"></i> Проверить
+                            </button>
+                            <button id="installUpdateBtnNew" class="btn primary-btn" style="display: none;">
+                                <i class="fas fa-download"></i> Установить и перезапустить
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="about-version">
+                        <span id="versionNumber">Версия: ...</span>
+                        <div class="about-buttons">
+                            <button id="changelogBtn" class="btn secondary-btn" title="Посмотреть историю изменений">
+                                <i class="fas fa-history"></i> История изменений
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="about-developer">
+                        <span>Разработчик: <a href="https://t.me/Fr1z1ck" target="_blank" title="Открыть Telegram"><i class="fab fa-telegram"></i> @Fr1z1ck</a></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Пасхалка с цветочками -->
+            <div id="easterEgg" class="easter-egg">
+                <div class="easter-egg-content">
+                    <div class="flowers-container">
+                        <div class="flower flower1"><i class="fas fa-heart"></i></div>
+                        <div class="flower flower2"><i class="fas fa-heart"></i></div>
+                        <div class="flower flower3"><i class="far fa-heart"></i></div>
+                        <div class="flower flower4"><i class="fas fa-heart"></i></div>
+                        <div class="flower flower5"><i class="fas fa-heart"></i></div>
+                        <div class="flower flower6"><i class="far fa-sun"></i></div>
+                        <div class="flower flower7"><i class="fas fa-heart"></i></div>
+                        <div class="flower flower8"><i class="far fa-heart"></i></div>
+                        <div class="flower flower9"><i class="fas fa-star"></i></div>
+                        <div class="flower flower10"><i class="fas fa-heart"></i></div>
+                        <div class="flower flower11"><i class="fas fa-asterisk"></i></div>
+                        <div class="flower flower12"><i class="fas fa-heart"></i></div>
+                        <div class="flower flower13"><i class="fas fa-star"></i></div>
+                        <div class="flower flower14"><i class="fas fa-heart"></i></div>
+                        <div class="flower flower15"><i class="far fa-heart"></i></div>
+                    </div>
+                    <h2 class="easter-egg-text" id="easterEggMessage">У меня жена самая лучшая</h2>
+                    <div class="easter-egg-buttons">
+                        <button id="generateMessageBtn" class="btn secondary-btn"><i class="fas fa-magic"></i> Новое послание</button>
+                        <button id="closeEasterEgg" class="btn primary-btn"><i class="fas fa-times"></i> Закрыть</button>
+                    </div>
+                </div>
+                <audio id="easterEggAudio" src="sound1.mp3" preload="auto"></audio>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно руководства пользователя -->
+    <div id="guideModal" class="modal" role="dialog" aria-labelledby="guideModalTitle" aria-hidden="true">
+        <div class="modal-content guide-modal">
+            <div class="modal-header">
+                <h3 id="guideModalTitle"><i class="fas fa-book"></i> Руководство пользователя</h3>
+                <span class="close-modal" aria-label="Закрыть" title="Закрыть руководство"><i class="fas fa-times"></i></span>
+            </div>
+            <div class="modal-body guide-body">
+                <div class="guide-navigation">
+                    <ul class="guide-tabs">
+                        <li class="guide-tab active" data-guide-section="start">
+                            <i class="fas fa-play-circle"></i>
+                            <span>Начало работы</span>
+                        </li>
+                        <li class="guide-tab" data-guide-section="files">
+                            <i class="fas fa-file-upload"></i>
+                            <span>Работа с файлами</span>
+                        </li>
+                        <li class="guide-tab" data-guide-section="comparison">
+                            <i class="fas fa-search"></i>
+                            <span>Сравнение</span>
+                        </li>
+                        <li class="guide-tab" data-guide-section="results">
+                            <i class="fas fa-table"></i>
+                            <span>Работа с результатами</span>
+                        </li>
+                        <li class="guide-tab" data-guide-section="tips">
+                            <i class="fas fa-lightbulb"></i>
+                            <span>Полезные советы</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="guide-content">
+                    <!-- Раздел: Начало работы -->
+                    <div class="guide-section active" id="guide-start">
+                        <h4>Добро пожаловать!</h4>
+                        <p class="guide-description">
+                            Система сравнения заказов предоставляет удобный интерфейс для анализа расхождений между данными МС и СБИС. Интуитивно понятная навигация и наглядное представление результатов помогут быстро находить несоответствия.
+                        </p>
+                        <p>Система сравнения заказов позволяет быстро выявить расхождения между заказом в МС и фактическими данными СБИС.</p>
+                        
+                        <div class="guide-steps">
+                            <div class="guide-step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h5>Загрузите файлы</h5>
+                                    <p>Загрузите два файла Excel: заказ МС и сканирование СБИС, перетащив их в область загрузки или выбрав через диалог.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="guide-step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h5>Запустите сравнение</h5>
+                                    <p>Нажмите кнопку "Сравнить файлы", чтобы система проанализировала данные и выявила расхождения.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="guide-step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h5>Изучите результаты</h5>
+                                    <p>Используйте вкладки для просмотра различных категорий товаров: отсутствующие, избыточные, несоответствия, некорректные.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-features">
+                            <h5>Основные возможности:</h5>
+                            <ul class="features-list">
+                                <li><i class="fas fa-check-circle"></i> Быстрый анализ расхождений</li>
+                                <li><i class="fas fa-check-circle"></i> Фильтрация и сортировка результатов</li>
+                                <li><i class="fas fa-check-circle"></i> Удобное представление данных</li>
+                                <li><i class="fas fa-check-circle"></i> Настройка внешнего вида интерфейса</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Раздел: Работа с файлами -->
+                    <div class="guide-section" id="guide-files">
+                        <h4>Работа с файлами</h4>
+                        <p class="guide-description">
+                            Для корректного сравнения необходимо загрузить файлы Excel в определенном формате. Система адаптируется к различным структурам файлов, но для наилучших результатов рекомендуется следовать указанным рекомендациям.
+                        </p>
+                        
+                        <h5>Требования к файлам</h5>
+                        <p>Для корректной работы системы необходимо загрузить два файла Excel (.xlsx или .xls):</p>
+                        
+                        <div class="guide-file-types">
+                            <div class="file-type">
+                                <i class="fas fa-file-excel"></i>
+                                <h6>Заказ МС</h6>
+                                <p>Содержит информацию о заказанных товарах с артикулами и количеством.</p>
+                            </div>
+                            
+                            <div class="file-type">
+                                <i class="fas fa-file-excel"></i>
+                                <h6>Сканирование СБИС</h6>
+                                <p>Содержит информацию о фактическом наличии товаров с артикулами и количеством.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-format">
+                            <h5>Рекомендуемый формат данных</h5>
+                            <div class="format-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Колонка</th>
+                                            <th>Описание</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Артикул/Код</td>
+                                            <td>Уникальный идентификатор товара</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Наименование</td>
+                                            <td>Название товара</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Количество</td>
+                                            <td>Количество единиц товара</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-tips">
+                            <h5>Советы по загрузке файлов:</h5>
+                            <ul>
+                                <li>Убедитесь, что в файлах есть колонки с кодом товара и количеством</li>
+                                <li>Файлы должны быть в формате Excel (.xlsx или .xls)</li>
+                                <li>Для сброса выбранных файлов используйте кнопку "Сбросить"</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Раздел: Сравнение -->
+                    <div class="guide-section" id="guide-comparison">
+                        <h4>Процесс сравнения</h4>
+                        <p class="guide-description">
+                            Алгоритм сравнения автоматически анализирует структуру загруженных файлов, выделяет ключевые данные и сопоставляет их для выявления несоответствий. Процесс оптимизирован для быстрой работы даже с большими объемами данных.
+                        </p>
+                        
+                        <h5>Как работает сравнение</h5>
+                        <p>Система автоматически определяет структуру загруженных файлов и сравнивает товары по их уникальным кодам.</p>
+                        
+                        <div class="comparison-info">
+                            <div class="comparison-step">
+                                <div class="step-icon"><i class="fas fa-file-import"></i></div>
+                                <div class="step-info">
+                                    <h6>Анализ файлов</h6>
+                                    <p>Определение структуры данных и извлечение информации о товарах</p>
+                                </div>
+                            </div>
+                            
+                            <div class="comparison-step">
+                                <div class="step-icon"><i class="fas fa-random"></i></div>
+                                <div class="step-info">
+                                    <h6>Сопоставление</h6>
+                                    <p>Поиск соответствий между товарами из двух файлов по артикулу</p>
+                                </div>
+                            </div>
+                            
+                            <div class="comparison-step">
+                                <div class="step-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                                <div class="step-info">
+                                    <h6>Выявление расхождений</h6>
+                                    <p>Определение отсутствующих, избыточных, несоответствующих по количеству и некорректных товаров</p>
+                                </div>
+                            </div>
+                            
+                            <div class="comparison-step">
+                                <div class="step-icon"><i class="fas fa-table"></i></div>
+                                <div class="step-info">
+                                    <h6>Формирование результатов</h6>
+                                    <p>Группировка и отображение данных по категориям</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Раздел: Работа с результатами -->
+                    <div class="guide-section" id="guide-results">
+                        <h4>Работа с результатами</h4>
+                        <p class="guide-description">
+                            После сравнения система предоставляет детальный отчет в виде таблиц с возможностью сортировки, фильтрации и поиска. Результаты разделены на категории для удобного анализа найденных расхождений.
+                        </p>
+                        
+                        <h5>Категории результатов</h5>
+                        <div class="categories-info">
+                            <div class="category-item">
+                                <div class="category-icon"><i class="fas fa-list"></i></div>
+                                <div class="category-details">
+                                    <h6>Все товары</h6>
+                                    <p>Полный список всех товаров из обоих файлов с их статусом</p>
+                                </div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-icon"><i class="fas fa-barcode"></i></div>
+                                <div class="category-details">
+                                    <h6>Товары в СБИС</h6>
+                                    <p>Все товары, которые есть в файле сканирования СБИС</p>
+                                </div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                                <div class="category-details">
+                                    <h6>Ошибки</h6>
+                                    <p>Сводка всех проблемных товаров с указанием типа проблемы</p>
+                                </div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-icon missing-icon"><i class="fas fa-times-circle"></i></div>
+                                <div class="category-details">
+                                    <h6>Отсутствующие</h6>
+                                    <p>Товары из заказа, которых нет в файле СБИС</p>
+                                </div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-icon extra-icon"><i class="fas fa-plus-circle"></i></div>
+                                <div class="category-details">
+                                    <h6>Избыточные</h6>
+                                    <p>Товары из файла СБИС, которых нет в заказе</p>
+                                </div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-icon mismatch-icon"><i class="fas fa-exchange-alt"></i></div>
+                                <div class="category-details">
+                                    <h6>Несоответствия</h6>
+                                    <p>Товары с расхождением в количестве между заказом и СБИС</p>
+                                </div>
+                            </div>
+
+                            <div class="category-item">
+                                <div class="category-icon" style="background-color: rgba(147, 51, 234, 0.1); color: #9333ea;">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </div>
+                                <div class="category-details">
+                                    <h6>Некорректные</h6>
+                                    <p>Товары без штрих-кода или с отсутствующим количеством в СБИС. Выделены фиолетовой границей для быстрой идентификации.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-icon" style="background-color: rgba(0, 150, 136, 0.1); color: #009688;">
+                                    <i class="fas fa-check-square"></i>
+                                </div>
+                                <div class="category-details">
+                                    <h6>Отмеченные</h6>
+                                    <p>Товары, отмеченные вами как проверенные. Позволяет отслеживать прогресс проверки и возвращаться к отмеченным позициям позже.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h5>Функции работы с результатами</h5>
+                        <div class="results-functions">
+                            <div class="function-item">
+                                <i class="fas fa-search"></i>
+                                <h6>Поиск</h6>
+                                <p>Используйте поле поиска для фильтрации товаров по артикулу или наименованию</p>
+                            </div>
+                            
+                            <div class="function-item">
+                                <i class="fas fa-sort"></i>
+                                <h6>Сортировка</h6>
+                                <p>Сортируйте товары по любому столбцу, нажав на заголовок таблицы</p>
+                            </div>
+                            
+                            <div class="function-item">
+                                <i class="fas fa-clipboard-check"></i>
+                                <h6>Отметка о проверке</h6>
+                                <p>Используйте чекбоксы в первой колонке для отметки проверенных позиций</p>
+                            </div>
+
+                            <div class="function-item">
+                                <i class="fas fa-times-circle"></i>
+                                <h6>Сброс отметок</h6>
+                                <p>Нажмите кнопку "Сбросить" для мгновенного сброса всех отметок о проверке</p>
+                            </div>
+                            
+                            <div class="function-item">
+                                <i class="fas fa-tag"></i>
+                                <h6>Фильтр маркировки</h6>
+                                <p>Используйте кнопку "Без марки" для скрытия/отображения товаров без маркировки</p>
+                            </div>
+                            
+                            <div class="function-item">
+                                <i class="fas fa-file-excel"></i>
+                                <h6>Экспорт в Excel</h6>
+                                <p>Нажмите кнопку "Экспорт" для сохранения текущих результатов сравнения в Excel-файл с сохранением форматирования и цветовой индикации</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Раздел: Полезные советы -->
+                    <div class="guide-section" id="guide-tips">
+                        <h4>Полезные советы</h4>
+                        
+                        <div class="tips-container">
+                            <div class="tip-card">
+                                <div class="tip-icon"><i class="fas fa-bolt"></i></div>
+                                <h5>Быстрая работа</h5>
+                                <p>Используйте перетаскивание файлов для более быстрой загрузки</p>
+                            </div>
+                            
+                            <div class="tip-card">
+                                <div class="tip-icon"><i class="fas fa-eye"></i></div>
+                                <h5>Маркировка товаров</h5>
+                                <p>Товары без маркировки всегда отображаются в конце списка ошибок. Используйте кнопку "Без марки" для их скрытия</p>
+                            </div>
+                            
+                            <div class="tip-card">
+                                <div class="tip-icon"><i class="fas fa-moon"></i></div>
+                                <h5>Темная тема</h5>
+                                <p>Используйте темную тему для комфортной работы в условиях плохого освещения</p>
+                            </div>
+                            
+                            <div class="tip-card">
+                                <div class="tip-icon"><i class="fas fa-search-plus"></i></div>
+                                <h5>Масштабирование</h5>
+                                <p>Настраивайте размер шрифта и масштаб интерфейса под свои предпочтения</p>
+                            </div>
+                            
+                            <div class="tip-card">
+                                <div class="tip-icon"><i class="fas fa-clipboard-check"></i></div>
+                                <h5>Отметка о проверке</h5>
+                                <p>Отмечайте проверенные товары для контроля своей работы, отметки сохраняются между сеансами</p>
+                            </div>
+                            
+                            <div class="tip-card">
+                                <div class="tip-icon"><i class="fas fa-times-circle"></i></div>
+                                <h5>Быстрый сброс</h5>
+                                <p>Быстро сбрасывайте все отметки о проверке одним нажатием кнопки "Сбросить"</p>
+                            </div>
+                            
+                            <div class="tip-card">
+                                <div class="tip-icon"><i class="fas fa-filter"></i></div>
+                                <h5>Эффективная работа</h5>
+                                <p>Используйте категории (вкладки) для последовательной проверки: сначала "Некорректные", затем "Отсутствующие", "Избыточные" и "Несоответствия"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-section">
+                            <h5>Вопросы</h5>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Что делать, если система не определяет структуру файла?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p>Проверьте, что файл содержит необходимые колонки: код/артикул товара, наименование и количество. При необходимости переименуйте заголовки колонок.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Как определить, какие товары без маркировки?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p>Товары без маркировки - это товары, в названии которых нет обозначения "(М)" или окончания "м" или "м.". Они всегда отображаются в конце списка во вкладке "Ошибки".</p>
+                                </div>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Как обновить данные после внесения изменений в файлы?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p>Нажмите кнопку "Сбросить", загрузите обновленные файлы и запустите сравнение заново.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-item">
+                                <div class="faq-question">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Что означает статус "Некорректный"?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p>Статус "Некорректный" присваивается товарам из СБИС, у которых отсутствует штрих-код или не указано количество. Такие позиции требуют особого внимания и исправления в системе СБИС. Вкладка "Некорректные" выделена фиолетовой границей для быстрой идентификации.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-item">
+                                <div class="faq-question">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Как отмечать проверенные позиции?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p>Нажмите на чекбокс в первой колонке рядом с товаром, чтобы отметить его как проверенный. Эта отметка сохраняется во всех вкладках и между сеансами. Для сброса всех отметок используйте кнопку "Сбросить проверки".</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-item">
+                                <div class="faq-question">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Что означает кнопка "Без марки"?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p>Кнопка "Без марки" позволяет скрыть или показать товары без маркировки в списке ошибок. Это помогает сосредоточиться на маркированных товарах, которые требуют вашего внимания. При нажатии кнопка меняет текст на "Показать марки" и подсвечивается зелёным цветом, показывая, что фильтр активен.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Как быстро сбросить все отметки о проверке?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p>Для быстрого сброса всех отметок о проверке просто нажмите на кнопку "Сбросить". Это действие выполняется моментально, без дополнительных запросов на подтверждение, что позволяет быстро очистить все отметки и начать проверку заново.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Сохраняются ли отметки о проверке после закрытия программы?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p>Да, все отметки о проверке сохраняются даже после закрытия программы. При следующем запуске и загрузке тех же файлов, все отмеченные ранее позиции будут также отмечены. Это позволяет продолжить проверку с того места, где вы остановились.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="guide-footer">
+                <button class="btn primary-btn" id="closeGuide">
+                    <i class="fas fa-check"></i> Понятно
+                </button>
+                <button class="btn secondary-btn" id="showNextTimeGuide">
+                    <i class="fas fa-eye-slash"></i> Больше не показывать
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно ченджлога -->
+    <div id="changelogModal" class="modal" role="dialog" aria-labelledby="changelogModalTitle" aria-hidden="true">
+        <div class="modal-content changelog-modal">
+            <div class="modal-header">
+                <h3 id="changelogModalTitle"><i class="fas fa-history"></i> История изменений</h3>
+                <span class="close-modal" aria-label="Закрыть" title="Закрыть историю изменений"><i class="fas fa-times"></i></span>
+            </div>
+            <div class="modal-body changelog-body">
+                <div class="changelog-entry">
+                    <div class="version-header">
+                        <h4>Версия 1.1.1</h4>
+                        <span class="version-date">15.04.2025</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="fix-tag">Исправлено</span> Устранена проблема с "бесконечной загрузкой" при проверке обновлений</li>
+                        <li><span class="improvement-tag">Улучшение</span> Добавлен таймаут для операции проверки обновлений</li>
+                        <li><span class="improvement-tag">Улучшение</span> Улучшена обработка ошибок при отсутствии обновлений</li>
+                    </ul>
+                </div>
+                
+                <div class="changelog-entry">
+                    <div class="version-header">
+                        <h4>Версия 1.1.0</h4>
+                        <span class="version-date">10.04.2025</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="feature-tag">Новое</span> Добавлена система автоматического обновления приложения</li>
+                        <li><span class="feature-tag">Новое</span> Добавлена кнопка проверки обновлений в интерфейсе</li>
+                        <li><span class="feature-tag">Новое</span> Реализован улучшенный просмотр ченджлога</li>
+                        <li><span class="improvement-tag">Улучшение</span> Оптимизирована структура проекта для стабильной сборки</li>
+                        <li><span class="fix-tag">Исправлено</span> Решены проблемы с запуском в режиме разработки</li>
+                    </ul>
+                </div>
+                
+                <div class="changelog-entry">
+                    <div class="version-header">
+                        <h4>Версия 1.0.2</h4>
+                        <span class="version-date">15.07.2023</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="feature-tag">Новое</span> Добавлена вкладка "Отмеченные" для отслеживания проверенных товаров</li>
+                        <li><span class="feature-tag">Новое</span> Добавлена кнопка "История изменений" в настройках</li>
+                        <li><span class="improvement-tag">Улучшение</span> Оптимизирована работа с большими списками товаров</li>
+                        <li><span class="fix-tag">Исправлено</span> Исправлено обновление таблиц при отметке товаров</li>
+                    </ul>
+                </div>
+                
+                <div class="changelog-entry">
+                    <div class="version-header">
+                        <h4>Версия 1.0.1</h4>
+                        <span class="version-date">01.06.2023</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="feature-tag">Новое</span> Добавлена цветовая индикация в экспорте Excel</li>
+                        <li><span class="improvement-tag">Улучшение</span> Добавлена сортировка по наименованию в Excel</li>
+                        <li><span class="fix-tag">Исправлено</span> Устранены мелкие ошибки интерфейса</li>
+                    </ul>
+                </div>
+                
+                <div class="changelog-entry">
+                    <div class="version-header">
+                        <h4>Версия 1.0.0</h4>
+                        <span class="version-date">15.05.2023</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="feature-tag">Новое</span> Первый релиз приложения</li>
+                        <li><span class="feature-tag">Новое</span> Базовый функционал сравнения заказов</li>
+                        <li><span class="feature-tag">Новое</span> Интерфейс с вкладками для категорий товаров</li>
+                        <li><span class="feature-tag">Новое</span> Возможность отмечать проверенные товары</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn primary-btn" id="closeChangelog">
+                    <i class="fas fa-check"></i> Закрыть
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Добавляем скрипт для взаимодействия с Electron API -->
+    <script>
+        // Проверяем, запущено ли приложение в Electron
+        const isElectron = window.electronAPI !== undefined;
+        
+        // Отладочные логи
+        console.log('Проверка Electron:', isElectron ? 'Запущено в Electron' : 'Запущено в браузере');
+        
+        if (isElectron) {
+            console.log('Electron API доступен:', window.electronAPI.isElectronAvailable);
+        }
+        
+        // Модифицируем функцию выбора файлов, если приложение запущено в Electron
+        if (isElectron) {
+            // Функция обработки выбора файлов через Electron
+            async function handleElectronFileInput() {
+                try {
+                    console.log('Запрос на выбор файлов через Electron API');
+                    
+                    // Открываем диалог выбора файлов через Electron API
+                    const filePaths = await window.electronAPI.openFileDialog();
+                    console.log('Получены пути к файлам:', filePaths);
+                    
+                    if (!filePaths || filePaths.length === 0) {
+                        console.log('Файлы не выбраны');
+                        return;
+                    }
+                    
+                    console.log('Начинаем обработку выбранных файлов:', filePaths);
+                    
+                    // Создаем объекты File из выбранных файлов
+                    const files = [];
+                    
+                    for (const filePath of filePaths) {
+                        try {
+                            console.log('Обработка файла:', filePath);
+                            
+                            // Получаем имя файла из пути
+                            const fileName = filePath.split('\\').pop().split('/').pop();
+                            console.log('Имя файла:', fileName);
+                            
+                            // Читаем содержимое файла через Electron API
+                            console.log('Чтение файла...');
+                            const result = await window.electronAPI.readFile(filePath);
+                            console.log('Файл прочитан, размер данных:', result.buffer.byteLength);
+                            
+                            // Создаем объект File
+                            const fileType = fileName.endsWith('.xlsx') ? 
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 
+                                'application/vnd.ms-excel';
+                                
+                            console.log('Создание File объекта типа:', fileType);
+                            const fileData = new Uint8Array(result.buffer);
+                            const file = new File([fileData], fileName, { type: fileType });
+                            
+                            files.push(file);
+                            console.log('Файл успешно обработан:', fileName);
+                        } catch (err) {
+                            console.error(`Ошибка при обработке файла ${filePath}:`, err);
+                            alert(`Ошибка при обработке файла ${filePath}: ${err.message}`);
+                        }
+                    }
+                    
+                    console.log('Все файлы обработаны, количество:', files.length);
+                    
+                    if (files.length > 0) {
+                        console.log('Передача файлов в fileInput');
+                        // Создаем и вызываем событие change для fileInput
+                        const dataTransfer = new DataTransfer();
+                        files.forEach(file => {
+                            console.log('Добавление файла в dataTransfer:', file.name);
+                            dataTransfer.items.add(file);
+                        });
+                        
+                        const fileInput = document.getElementById('fileInput');
+                        if (!fileInput) {
+                            console.error('Элемент fileInput не найден!');
+                            alert('Ошибка: Элемент ввода файлов не найден на странице');
+                            return;
+                        }
+                        
+                        console.log('Устанавливаем files в fileInput');
+                        fileInput.files = dataTransfer.files;
+                        
+                        // ИЗМЕНЕНИЕ: Прямой вызов обработчика вместо создания события
+                        console.log('Прямой вызов функции handleFileInput');
+                        
+                        // Проверяем наличие функции handleFileInput в глобальном окружении
+                        if (typeof handleFileInput === 'function') {
+                            // Создаем фиктивное событие
+                            const mockEvent = { 
+                                target: fileInput,
+                                currentTarget: fileInput,
+                                preventDefault: () => {}
+                            };
+                            
+                            // Вызываем функцию напрямую
+                            handleFileInput(mockEvent);
+                            console.log('Функция handleFileInput вызвана');
+                        } else {
+                            console.error('Функция handleFileInput не найдена, используем стандартный метод');
+                            // Запасной вариант: создаем событие change
+                            const event = new Event('change', { bubbles: true });
+                            fileInput.dispatchEvent(event);
+                            console.log('Событие отправлено');
+                        }
+                    }
+                    
+                    // Принудительно активируем окно приложения
+                    setTimeout(() => {
+                        try {
+                            // Фокусируемся на элементе интерфейса
+                            document.getElementById('analyzeBtn').focus();
+                            
+                            // Прокручиваем страницу для обеспечения видимости
+                            window.scrollTo(0, 0);
+                        } catch (e) {
+                            console.error('Ошибка при восстановлении фокуса:', e);
+                        }
+                    }, 200);
+                } catch (error) {
+                    console.error('Ошибка при выборе файлов:', error);
+                    alert('Ошибка при выборе файлов: ' + error.message);
+                }
+            }
+            
+            // Заменяем обработчики для кнопки и зоны загрузки файлов
+            window.addEventListener('DOMContentLoaded', () => {
+                console.log('DOMContentLoaded: настройка обработчиков для Electron');
+                
+                // Получаем элементы интерфейса
+                const selectFilesBtn = document.querySelector('.select-files-btn');
+                const dropZone = document.getElementById('dropZone');
+                const fileInput = document.getElementById('fileInput');
+                
+                console.log('Элементы интерфейса:', { 
+                    'selectFilesBtn': !!selectFilesBtn, 
+                    'dropZone': !!dropZone, 
+                    'fileInput': !!fileInput 
+                });
+                
+                if (selectFilesBtn) {
+                    console.log('Настройка обработчика для кнопки выбора файлов');
+                    // Удаляем все существующие обработчики
+                    const newSelectFilesBtn = selectFilesBtn.cloneNode(true);
+                    selectFilesBtn.parentNode.replaceChild(newSelectFilesBtn, selectFilesBtn);
+                    
+                    // Заменяем обработчик кнопки выбора файлов
+                    newSelectFilesBtn.addEventListener('click', (e) => {
+                        console.log('Клик по кнопке выбора файлов');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleElectronFileInput();
+                    });
+                }
+                
+                if (dropZone) {
+                    console.log('Настройка обработчика для зоны загрузки');
+                    // Добавляем дополнительный обработчик для зоны загрузки
+                    dropZone.addEventListener('click', (e) => {
+                        // Если клик был не на кнопке выбора файлов и не на других интерактивных элементах
+                        if (!e.target.closest('.select-files-btn') && !e.target.closest('a') && !e.target.closest('button')) {
+                            console.log('Клик по зоне загрузки');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleElectronFileInput();
+                        }
+                    });
+                }
+                
+                // Отключаем стандартное поведение для input type="file"
+                if (fileInput) {
+                    console.log('Настройка обработчика для fileInput');
+                    // Удаляем существующие обработчики
+                    const newFileInput = fileInput.cloneNode(true);
+                    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+                    
+                    newFileInput.addEventListener('click', (e) => {
+                        if (isElectron) {
+                            console.log('Клик по fileInput');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleElectronFileInput();
+                        }
+                    });
+                }
+            });
+            
+            // Добавляем обработчик загрузки окна
+            window.addEventListener('load', () => {
+                console.log('Окно загружено в Electron режиме');
+            });
+        }
+    </script>
+    <script src="script.js"></script>
+</body>
+</html> 

@@ -1,0 +1,69 @@
+{
+  "name": "crosscheck-sbis",
+  "productName": "CrossCheck SBIS",
+  "version": "1.1.6",
+  "description": "Система сравнения заказов МС и СБИС",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "pack": "electron-builder --dir",
+    "predist": "node electron/update-version.js",
+    "dist": "electron-builder",
+    "prepublish": "node electron/update-version.js",
+    "publish": "electron-builder -p always",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.crosscheck.sbis",
+    "productName": "CrossCheck SBIS",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "index.html",
+      "script.js",
+      "styles.css",
+      "libs/**/*",
+      "sound1.mp3",
+      "main.js",
+      "preload.js",
+      "CHANGELOG.md"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "electron/crosscheck sbis.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Fr1z1ck",
+        "repo": "crosscheck-sbis"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fr1z1ck/crosscheck-sbis.git"
+  },
+  "author": "Fr1z1ck",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  }
+} 
