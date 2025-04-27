@@ -25,7 +25,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true
     },
-    icon: path.join(__dirname, 'electron', 'crosscheck pro.ico'),
+    icon: path.join(__dirname, 'electron', 'CrossCheck Pro.ico'),
     frame: true,
     autoHideMenuBar: true
   });

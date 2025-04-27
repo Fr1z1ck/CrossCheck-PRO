@@ -36,7 +36,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "electron/crosscheck pro.ico"
+      "icon": "electron/CrossCheck Pro.ico"
     },
     "nsis": {
       "oneClick": false,
