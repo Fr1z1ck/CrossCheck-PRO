@@ -1,6 +1,6 @@
 {
-  "name": "crosscheck-sbis",
-  "productName": "CrossCheck SBIS",
+  "name": "crosscheck-pro",
+  "productName": "CrossCheck PRO",
   "version": "1.0.0",
   "description": "Система сравнения заказов МС и СБИС",
   "main": "main.js",
@@ -15,8 +15,8 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
-    "appId": "com.crosscheck.sbis",
-    "productName": "CrossCheck SBIS",
+    "appId": "com.crosscheck.pro",
+    "productName": "CrossCheck PRO",
     "directories": {
       "output": "dist"
     },
@@ -36,7 +36,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "electron/crosscheck sbis.ico"
+      "icon": "electron/crosscheck pro.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -49,13 +49,13 @@
       {
         "provider": "github",
         "owner": "Fr1z1ck",
-        "repo": "crosscheck-sbis"
+        "repo": "CrossCheck-PRO"
       }
     ]
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Fr1z1ck/crosscheck-sbis.git"
+    "url": "https://github.com/Fr1z1ck/CrossCheck-PRO.git"
   },
   "author": "Fr1z1ck",
   "license": "MIT",

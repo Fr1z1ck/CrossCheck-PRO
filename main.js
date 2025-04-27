@@ -25,7 +25,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true
     },
-    icon: path.join(__dirname, 'electron', 'crosscheck sbis.ico'),
+    icon: path.join(__dirname, 'electron', 'crosscheck pro.ico'),
     frame: true,
     autoHideMenuBar: true
   });
@@ -43,11 +43,11 @@ function createWindow() {
   autoUpdater.checkForUpdatesAndNotify();
 
   // Установка заголовка окна
-  mainWindow.setTitle('CrossCheck SBIS v' + app.getVersion());
+  mainWindow.setTitle('CrossCheck PRO v' + app.getVersion());
 
   // Настройка панели "О программе" (для macOS)
   app.setAboutPanelOptions({
-    applicationName: 'CrossCheck SBIS',
+    applicationName: 'CrossCheck PRO',
     applicationVersion: app.getVersion(),
     copyright: 'Copyright © 2023-2025 Fr1z1ck'
   });

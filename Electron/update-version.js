@@ -14,7 +14,7 @@ console.log(`Текущая версия: ${currentVersion}`);
 // Создание CHANGELOG.md, если он не существует
 const changelogPath = path.join(__dirname, '..', 'CHANGELOG.md');
 if (!fs.existsSync(changelogPath)) {
-  const initialChangelog = `# История изменений CrossCheck SBIS
+  const initialChangelog = `# История изменений CrossCheck PRO
 
 ## [${currentVersion}] - ${new Date().toISOString().split('T')[0]}
 - Первый релиз приложения

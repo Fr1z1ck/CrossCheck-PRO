@@ -5,7 +5,7 @@ cd /d "%~dp0"
 :menu
 cls
 echo +---------------------------------------------------------------+
-echo :               CrossCheck SBIS - System Builder                :
+echo :               CrossCheck PRO - System Builder                 :
 echo +---------------------------------------------------------------+
 echo.
 echo  Select action:
