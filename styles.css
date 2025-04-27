@@ -3993,14 +3993,13 @@ th.check-column.sortable:hover {
     align-items: flex-start;
 }
 
-.feature-tag, .fix-tag, .improvement-tag {
+.feature-tag, .fix-tag, .improvement-tag, .update-tag {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 2px 6px;
     border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    margin-right: 10px;
-    flex-shrink: 0;
+    font-size: 0.85em;
+    font-weight: 500;
+    margin-right: 6px;
 }
 
 .feature-tag {
@@ -4008,14 +4007,19 @@ th.check-column.sortable:hover {
     color: #10b981;
 }
 
-.fix-tag {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+.update-tag {
+    background-color: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
 }
 
 .improvement-tag {
     background-color: rgba(59, 130, 246, 0.1);
     color: #3b82f6;
+}
+
+.fix-tag {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
 }
 
 .modal-footer {
@@ -4035,6 +4039,11 @@ th.check-column.sortable:hover {
 
 .dark-theme .improvement-tag {
     background-color: rgba(59, 130, 246, 0.2);
+}
+
+.dark-theme .update-tag {
+    background-color: rgba(139, 92, 246, 0.2);
+    color: #8b5cf6;
 }
 
 /* Стили для модального окна проверки обновлений */
@@ -4114,7 +4123,7 @@ th.check-column.sortable:hover {
     color: var(--primary-color);
 }
 
-.feature-tag, .improvement-tag, .fix-tag {
+.feature-tag, .improvement-tag, .fix-tag, .update-tag {
     display: inline-block;
     padding: 2px 6px;
     border-radius: 4px;
@@ -4126,6 +4135,11 @@ th.check-column.sortable:hover {
 .feature-tag {
     background-color: rgba(16, 185, 129, 0.1);
     color: #10b981;
+}
+
+.update-tag {
+    background-color: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
 }
 
 .improvement-tag {
@@ -4294,7 +4308,7 @@ th.check-column.sortable:hover {
     color: var(--primary-color);
 }
 
-.feature-tag, .improvement-tag, .fix-tag {
+.feature-tag, .improvement-tag, .fix-tag, .update-tag {
     display: inline-block;
     padding: 2px 6px;
     border-radius: 4px;
@@ -4306,6 +4320,11 @@ th.check-column.sortable:hover {
 .feature-tag {
     background-color: rgba(16, 185, 129, 0.1);
     color: #10b981;
+}
+
+.update-tag {
+    background-color: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
 }
 
 .improvement-tag {
