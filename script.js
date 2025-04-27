@@ -1,6 +1,7 @@
 // Глобальные переменные для хранения данных
 let orderData = null;  // Данные заказа МС
 let scanData = null;   // Данные сканирования СБИС
+let kassaTextData = null; // Данные из текстового поля КАССЫ
 let comparisonResults = null;  // Результаты сравнения
 let orderFile = null;  // Файл заказа
 let scanFile = null;   // Файл сканирования
@@ -10,6 +11,7 @@ let currentFontSize = 100;  // Текущий размер шрифта в пр�
 let currentUIScale = 100;   // Текущий масштаб интерфейса в процентах
 let hideUnmarkedItems = false; // Флаг для скрытия/показа немаркированных товаров
 let currentOrderHash = null; // Хеш текущего заказа
+let currentMode = 'sbis'; // Текущий режим работы: 'sbis' или 'kassa'
 
 // Глобальный объект для хранения состояния проверки товаров
 let checkedItems = new Map();
@@ -77,6 +79,137 @@ function setupEventListeners() {
             closeSettingsModal();
         }
     });
+    
+    // Обработчики для переключателей режимов
+    const sbisModeBtn = document.getElementById('sbisModeBtn');
+    const kassaModeBtn = document.getElementById('kassaModeBtn');
+    const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
+    const fileLabel = document.getElementById('fileLabel');
+    const fileHint = document.getElementById('fileHint');
+    
+    if (sbisModeBtn && kassaModeBtn) {
+        sbisModeBtn.addEventListener('click', () => {
+            if (currentMode !== 'sbis') {
+                // Переключаем режим
+                currentMode = 'sbis';
+                sbisModeBtn.classList.add('active');
+                kassaModeBtn.classList.remove('active');
+                
+                // Скрываем поле для текста
+                if (kassaTextInputContainer) {
+                    kassaTextInputContainer.style.display = 'none';
+                }
+                
+                // Обновляем текст и настройки для режима СБИС
+                if (fileLabel) {
+                    fileLabel.textContent = 'Выберите файлы для сравнения';
+                }
+                
+                if (fileHint) {
+                    fileHint.innerHTML = 'Перетащите файлы в эту область или нажмите кнопку ниже для выбора через диалог<br><small>(заказ МС и сканирование СБИС)</small><br><small class="file-format-hint">Поддерживаемые форматы: Excel (.xls, .xlsx)</small>';
+                }
+                
+                // Обновляем настройки для выбора нескольких файлов
+                fileInput.setAttribute('multiple', 'multiple');
+                
+                // Сбрасываем данные
+                resetFiles();
+                
+                // Обновляем заголовок вкладки со сканированием
+                updateScanTabLabel('СБИС');
+            }
+        });
+        
+        kassaModeBtn.addEventListener('click', () => {
+            if (currentMode !== 'kassa') {
+                // Переключаем режим
+                currentMode = 'kassa';
+                kassaModeBtn.classList.add('active');
+                sbisModeBtn.classList.remove('active');
+                
+                // Показываем поле для текста
+                if (kassaTextInputContainer) {
+                    kassaTextInputContainer.style.display = 'block';
+                }
+                
+                // Обновляем текст и настройки для режима КАССА
+                if (fileLabel) {
+                    fileLabel.textContent = 'Выберите файл Excel заказа МС';
+                }
+                
+                if (fileHint) {
+                    fileHint.innerHTML = 'Перетащите файл в эту область или нажмите кнопку ниже для выбора через диалог<br><small>(только заказ МС)</small><br><small class="file-format-hint">Поддерживаемые форматы: Excel (.xls, .xlsx)</small>';
+                }
+                
+                // Отображаем шаги для режима КАССА
+                const fileSteps = document.querySelector('.file-steps');
+                if (fileSteps) {
+                    fileSteps.style.display = 'flex';
+                }
+                
+                // Обновляем настройки для выбора одного файла
+                fileInput.removeAttribute('multiple');
+                
+                // Сбрасываем данные
+                resetFiles();
+                
+                // Очищаем поле текста кассы
+                const kassaTextInput = document.getElementById('kassaTextInput');
+                if (kassaTextInput) {
+                    kassaTextInput.value = '';
+                }
+                
+                // Обновляем заголовок вкладки со сканированием
+                updateScanTabLabel('КАССЕ');
+            }
+        });
+        
+        // Скрываем шаги при запуске в режиме СБИС
+        if (currentMode === 'sbis') {
+            const fileSteps = document.querySelector('.file-steps');
+            if (fileSteps) {
+                fileSteps.style.display = 'none';
+            }
+        }
+        
+        sbisModeBtn.addEventListener('click', () => {
+            if (currentMode !== 'sbis') {
+                // Переключаем режим
+                currentMode = 'sbis';
+                sbisModeBtn.classList.add('active');
+                kassaModeBtn.classList.remove('active');
+                
+                // Скрываем поле для текста
+                if (kassaTextInputContainer) {
+                    kassaTextInputContainer.style.display = 'none';
+                }
+                
+                // Скрываем шаги для режима СБИС
+                const fileSteps = document.querySelector('.file-steps');
+                if (fileSteps) {
+                    fileSteps.style.display = 'none';
+                }
+                
+                // Обновляем текст и настройки для режима СБИС
+                if (fileLabel) {
+                    fileLabel.textContent = 'Выберите файлы для сравнения';
+                }
+                
+                if (fileHint) {
+                    fileHint.innerHTML = 'Перетащите файлы в эту область или нажмите кнопку ниже для выбора через диалог<br><small>(заказ МС и сканирование СБИС)</small><br><small class="file-format-hint">Поддерживаемые форматы: Excel (.xls, .xlsx)</small>';
+                }
+                
+                // Обновляем настройки для выбора нескольких файлов
+                fileInput.setAttribute('multiple', 'multiple');
+                
+                // Сбрасываем данные
+                resetFiles();
+                
+                // Обновляем заголовок вкладки со сканированием
+                updateScanTabLabel('СБИС');
+            }
+        });
+    }
 
     // Обработчик для тем оформления
     themeOptions.forEach(option => {
@@ -184,6 +317,84 @@ function setupEventListeners() {
     if (typeof window !== 'undefined') {
         window.handleFileInput = handleFileInput;
         console.log('Функция handleFileInput доступна глобально:', !!window.handleFileInput);
+    }
+
+    // Обработчик для кнопки вставки из буфера обмена
+    const pasteBtnKassa = document.getElementById('pasteBtnKassa');
+    if (pasteBtnKassa) {
+        pasteBtnKassa.addEventListener('click', async () => {
+            try {
+                const kassaTextInput = document.getElementById('kassaTextInput');
+                if (kassaTextInput) {
+                    // Запрашиваем доступ к буферу обмена
+                    const text = await navigator.clipboard.readText();
+                    kassaTextInput.value = text;
+                    kassaTextInput.focus();
+                    
+                    // Генерируем событие input для активации кнопки анализа
+                    kassaTextInput.dispatchEvent(new Event('input'));
+                    
+                    // Показываем уведомление
+                    showNotification('Вставлено', 'Текст успешно вставлен из буфера обмена', 'success');
+                }
+            } catch (err) {
+                console.error('Не удалось получить доступ к буферу обмена:', err);
+                showNotification('Ошибка', 'Не удалось получить доступ к буферу обмена', 'error');
+            }
+        });
+    }
+}
+
+// Вспомогательная функция для обновления заголовка вкладки сканирования
+function updateScanTabLabel(type) {
+    const scanTab = document.querySelector('.tab-btn[data-tab="scan"]');
+    if (scanTab) {
+        const icon = '<i class="fas fa-barcode"></i>';
+        let count = '';
+        const countSpan = scanTab.querySelector('.tab-counter');
+        if (countSpan) {
+            count = ` <span class="tab-counter">${countSpan.textContent}</span>`;
+        }
+        
+        // Обновляем также заголовок в самой таблице
+        const scanTableHeader = document.querySelector('#scanTab table thead tr th:nth-child(5)');
+        if (scanTableHeader) {
+            scanTableHeader.textContent = `Кол-во в ${type}`;
+            scanTableHeader.setAttribute('title', `Нажмите для сортировки по количеству в ${type}`);
+        }
+        
+        // Обновляем заголовки в остальных таблицах
+        const allTableHeader = document.querySelector('#allTab table thead tr th:nth-child(5)');
+        if (allTableHeader) {
+            allTableHeader.textContent = `Кол-во в ${type}`;
+            allTableHeader.setAttribute('title', `Нажмите для сортировки по количеству в ${type}`);
+        }
+        
+        const errorsTableHeader = document.querySelector('#errorsTab table thead tr th:nth-child(5)');
+        if (errorsTableHeader) {
+            errorsTableHeader.textContent = `Кол-во в ${type}`;
+            errorsTableHeader.setAttribute('title', `Нажмите для сортировки по количеству в ${type}`);
+        }
+        
+        const mismatchTableHeader = document.querySelector('#mismatchTab table thead tr th:nth-child(5)');
+        if (mismatchTableHeader) {
+            mismatchTableHeader.textContent = `Кол-во в ${type}`;
+            mismatchTableHeader.setAttribute('title', `Нажмите для сортировки по количеству в ${type}`);
+        }
+        
+        const checkedTableHeader = document.querySelector('#checkedTab table thead tr th:nth-child(5)');
+        if (checkedTableHeader) {
+            checkedTableHeader.textContent = `Кол-во в ${type}`;
+            checkedTableHeader.setAttribute('title', `Нажмите для сортировки по количеству в ${type}`);
+        }
+        
+        // Обновляем также заголовок в блоке статистики
+        const scanItemsLabel = document.querySelector('.stats-grid .stat-item:nth-child(2) .stat-label');
+        if (scanItemsLabel) {
+            scanItemsLabel.textContent = `Товаров в ${type}`;
+        }
+        
+        scanTab.innerHTML = `${icon} Товары в ${type}${count}`;
     }
 }
 
@@ -482,6 +693,7 @@ async function handleFileInput(event) {
     // Очищаем предыдущие данные
     orderData = null;
     scanData = null;
+    kassaTextData = null;
     comparisonResults = null;
     orderFile = null;
     scanFile = null;
@@ -504,36 +716,106 @@ async function handleFileInput(event) {
     // Отображаем выбранные файлы в интерфейсе
     updateSelectedFilesDisplay(files);
     
-    // Ищем файлы заказа и сканирования
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+    if (currentMode === 'sbis') {
+        // Стандартный режим СБИС - ищем файлы заказа и сканирования
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Проверяем тип файла
+            if (file.name.toLowerCase().includes('мс') || file.name.toLowerCase().includes('ms') || file.name.toLowerCase().endsWith('.xls')) {
+                orderFile = file;
+            } else if (file.name.toLowerCase().includes('сбис') || file.name.toLowerCase().includes('sbis') || file.name.toLowerCase().endsWith('.xlsx')) {
+                scanFile = file;
+            }
+        }
         
-        // Проверяем тип файла
-        if (file.name.toLowerCase().includes('мс') || file.name.toLowerCase().includes('ms') || file.name.toLowerCase().endsWith('.xls')) {
-            orderFile = file;
-        } else if (file.name.toLowerCase().includes('сбис') || file.name.toLowerCase().includes('sbis') || file.name.toLowerCase().endsWith('.xlsx')) {
-            scanFile = file;
+        // Если не удалось определить файлы по имени, берем по порядку
+        if (files.length >= 2 && (!orderFile || !scanFile)) {
+            orderFile = orderFile || files[0];
+            scanFile = scanFile || files[1];
+        } else if (files.length === 1 && !orderFile && !scanFile) {
+            // Если загружен только один файл, пробуем определить какой это файл
+            const file = files[0];
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            if (ext === 'xls') {
+                orderFile = file;
+            } else if (ext === 'xlsx') {
+                scanFile = file;
+            }
+        }
+        
+        // Разблокируем кнопку, если загружены оба файла
+        analyzeBtn.disabled = !(orderFile && scanFile);
+    } else if (currentMode === 'kassa') {
+        // Режим КАССА - нужен только файл заказа и текст из поля
+        orderFile = files[0]; // Берем первый (и единственный) файл как заказ
+        
+        // Получаем текст из поля ввода
+        const kassaTextInput = document.getElementById('kassaTextInput');
+        kassaTextData = kassaTextInput ? kassaTextInput.value.trim() : '';
+        
+        // Разблокируем кнопку, если загружен файл и есть текст
+        analyzeBtn.disabled = !(orderFile && kassaTextData);
+        
+        // Обновляем состояние кнопки при изменении текста в поле
+        if (kassaTextInput) {
+            kassaTextInput.addEventListener('input', function() {
+                kassaTextData = this.value.trim();
+                analyzeBtn.disabled = !(orderFile && kassaTextData);
+                
+                // Добавляем подсветку кнопки, если она активна
+                if (!analyzeBtn.disabled) {
+                    analyzeBtn.classList.add('active-btn');
+                } else {
+                    analyzeBtn.classList.remove('active-btn');
+                }
+            });
+        }
+        
+        // Добавляем особое отображение для выбранного файла заказа в режиме КАССА
+        if (orderFile) {
+            const selectedFilesContainer = document.getElementById('selectedFiles');
+            if (selectedFilesContainer) {
+                // Добавляем информацию о выбранном файле заказа с дополнительными индикаторами
+                const fileElement = document.createElement('div');
+                fileElement.className = 'kassa-selected-file';
+                
+                // Создаем индикатор для следующего шага (вставить текст из кассы)
+                const nextStepIndicator = document.createElement('div');
+                nextStepIndicator.className = 'next-step-indicator';
+                nextStepIndicator.innerHTML = `
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Файл выбран. Теперь вставьте текст из кассы →</span>
+                `;
+                
+                fileElement.innerHTML = `
+                    <i class="fas fa-file-excel"></i>
+                    <div class="file-info">
+                        <div class="file-name" title="${orderFile.name}">${orderFile.name}</div>
+                        <div class="file-meta">Заказ МС, ${formatFileSize(orderFile.size)}</div>
+                    </div>
+                `;
+                
+                selectedFilesContainer.innerHTML = '';
+                selectedFilesContainer.appendChild(fileElement);
+                selectedFilesContainer.appendChild(nextStepIndicator);
+                
+                // Прокручиваем к текстовому полю
+                const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
+                if (kassaTextInputContainer) {
+                    // Небольшая задержка для анимации
+                    setTimeout(() => {
+                        kassaTextInputContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Устанавливаем фокус на текстовое поле
+                        if (kassaTextInput) {
+                            kassaTextInput.focus();
+                        }
+                    }, 300);
+                }
+            }
         }
     }
-    
-    // Если не удалось определить файлы по имени, берем по порядку
-    if (files.length >= 2 && (!orderFile || !scanFile)) {
-        orderFile = orderFile || files[0];
-        scanFile = scanFile || files[1];
-    } else if (files.length === 1 && !orderFile && !scanFile) {
-        // Если загружен только один файл, пробуем определить какой это файл
-        const file = files[0];
-        const ext = file.name.split('.').pop().toLowerCase();
-        
-        if (ext === 'xls') {
-            orderFile = file;
-        } else if (ext === 'xlsx') {
-            scanFile = file;
-        }
-    }
-    
-    // Разблокируем кнопку, если загружены оба файла
-    analyzeBtn.disabled = !(orderFile && scanFile);
     
     // Добавляем подсветку кнопки, если она активна
     if (!analyzeBtn.disabled) {
@@ -541,6 +823,15 @@ async function handleFileInput(event) {
     } else {
         analyzeBtn.classList.remove('active-btn');
     }
+}
+
+// Функция форматирования размера файла
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 // Функция обновления отображения выбранных файлов
@@ -659,27 +950,61 @@ async function analyzeFiles() {
     
     try {
         console.log('Начинаем анализ файлов...');
-        console.log(`Файл заказа: ${orderFile.name}, Файл СБИС: ${scanFile.name}`);
         
-        // Показываем уведомление о начале анализа
-        showNotification('Анализ', 'Начинаем сравнение файлов...', 'info');
-        
-        // Чтение данных из файлов
-        orderData = await readExcelFile(orderFile);
-        scanData = await readExcelFile(scanFile);
-        
-        // Извлечение товаров из данных файлов
-        console.log('Извлечение товаров из файла МС...');
-        const orderItems = extractProductsFromMS(orderData);
-        console.log(`Извлечено ${orderItems.length} товаров из файла МС`);
-        
-        console.log('Извлечение товаров из файла СБИС...');
-        const scanItems = extractProductsFromSBIS(scanData);
-        console.log(`Извлечено ${scanItems.length} товаров из файла СБИС`);
-        
-        // Сравнение товаров
-        console.log('Сравнение товаров...');
-        comparisonResults = compareProducts(orderItems, scanItems);
+        if (currentMode === 'sbis') {
+            // Режим СБИС
+            console.log(`Файл заказа: ${orderFile.name}, Файл СБИС: ${scanFile.name}`);
+            
+            // Показываем уведомление о начале анализа
+            showNotification('Анализ', 'Начинаем сравнение файлов...', 'info');
+            
+            // Чтение данных из файлов
+            orderData = await readExcelFile(orderFile);
+            scanData = await readExcelFile(scanFile);
+            
+            // Извлечение товаров из данных файлов
+            console.log('Извлечение товаров из файла МС...');
+            const orderItems = extractProductsFromMS(orderData);
+            console.log(`Извлечено ${orderItems.length} товаров из файла МС`);
+            
+            console.log('Извлечение товаров из файла СБИС...');
+            const scanItems = extractProductsFromSBIS(scanData);
+            console.log(`Извлечено ${scanItems.length} товаров из файла СБИС`);
+            
+            // Сравнение товаров по коду (стандартный режим)
+            console.log('Сравнение товаров...');
+            comparisonResults = compareProducts(orderItems, scanItems);
+        } else if (currentMode === 'kassa') {
+            // Режим КАССА
+            console.log(`Файл заказа: ${orderFile.name}`);
+            console.log('Текст кассы доступен: ' + (kassaTextData && kassaTextData.length > 0));
+            
+            // Показываем уведомление о начале анализа
+            showNotification('Анализ', 'Начинаем сравнение данных в режиме "КАССА"...', 'info');
+            
+            // Обновляем текст кассы на случай, если он изменился
+            const kassaTextInput = document.getElementById('kassaTextInput');
+            if (kassaTextInput) {
+                kassaTextData = kassaTextInput.value.trim();
+            }
+            
+            // Чтение данных из файла заказа
+            orderData = await readExcelFile(orderFile);
+            
+            // Извлечение товаров из данных файла
+            console.log('Извлечение товаров из файла МС...');
+            const orderItems = extractProductsFromMS(orderData);
+            console.log(`Извлечено ${orderItems.length} товаров из файла МС`);
+            
+            // Извлечение товаров из текста кассы
+            console.log('Извлечение товаров из текста кассы...');
+            const kassaItems = extractProductsFromKassaText(kassaTextData);
+            console.log(`Извлечено ${kassaItems.length} товаров из текста кассы`);
+            
+            // Сравнение товаров по названию (режим КАССА)
+            console.log('Сравнение товаров по названию...');
+            comparisonResults = compareProductsByName(orderItems, kassaItems);
+        }
         
         // Отображение результатов
         displayResults(comparisonResults);
@@ -699,14 +1024,17 @@ async function analyzeFiles() {
         console.log('Анализ файлов завершен успешно');
         
         // Показываем уведомление об успешном завершении
-        showNotification('Готово', 'Анализ файлов успешно завершен', 'success');
+        showNotification('Успех', 'Анализ файлов успешно завершен', 'success');
+        
     } catch (error) {
         console.error('Ошибка при анализе файлов:', error);
-        showNotification('Ошибка', 'Произошла ошибка при анализе файлов: ' + error.message, 'error');
+        
+        // Показываем уведомление об ошибке
+        showNotification('Ошибка', `Произошла ошибка при анализе файлов: ${error.message}`, 'error');
     } finally {
-        // Разблокируем кнопку анализа
+        // Разблокируем кнопку анализа и восстанавливаем ее текст
         analyzeBtn.disabled = false;
-        analyzeBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Сравнить файлы';
+        analyzeBtn.innerHTML = '<i class="fas fa-search"></i> <span>Сравнить файлы</span>';
     }
 }
 
@@ -1127,6 +1455,15 @@ function compareProducts(orderProducts, scanProducts) {
 
 // Отображение результатов сравнения
 function displayResults(results) {
+    // Проверяем наличие всех необходимых массивов
+    results.all = results.all || [];
+    results.scan = results.scan || [];
+    results.errors = results.errors || [];
+    results.missing = results.missing || [];
+    results.extra = results.extra || [];
+    results.mismatch = results.mismatch || [];
+    results.incomplete = results.incomplete || [];
+    
     // Добавляем класс к таблице ошибок для управления видимостью немаркированных товаров
     const errorsTab = document.getElementById('errorsTab');
     if (errorsTab) {
@@ -1136,7 +1473,7 @@ function displayResults(results) {
     // Заполняем таблицу всех товаров
     fillTable('allTable', results.all, ['code', 'name', 'orderQuantity', 'scanQuantity', 'status']);
     
-    // Заполняем таблицу товаров из СБИС
+    // Заполняем таблицу товаров из СБИС/Кассы
     fillTable('scanTable', results.scan, ['code', 'name', 'scanQuantity', 'status']);
     
     // Заполняем таблицу ошибок (общую), исключая отмеченные товары
@@ -1191,7 +1528,7 @@ function fillTable(tableId, items, columns, rowClass = '') {
     const tbody = document.getElementById(tableId);
     tbody.innerHTML = '';
     
-    if (items.length === 0) {
+    if (!items || items.length === 0) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
         cell.colSpan = columns.length + 1; // +1 для колонки с чекбоксом
@@ -1232,7 +1569,18 @@ function fillTable(tableId, items, columns, rowClass = '') {
         const row = document.createElement('tr');
         
         // Проверяем, отмечен ли товар
-        const isChecked = checkedItems.has(item.code);
+        let isChecked;
+        let itemIdentifier;
+        
+        if (currentMode === 'kassa' && !item.code) {
+            // В режиме КАССА используем название как идентификатор
+            itemIdentifier = item.originalName || item.name;
+            isChecked = checkedItems.has(itemIdentifier);
+        } else {
+            itemIdentifier = item.code;
+            isChecked = checkedItems.has(itemIdentifier);
+        }
+        
         if (isChecked) {
             row.classList.add('checked-row');
         }
@@ -1254,7 +1602,15 @@ function fillTable(tableId, items, columns, rowClass = '') {
         
         const checkbox = document.createElement('div');
         checkbox.className = `item-checkbox${isChecked ? ' checked' : ''}`;
-        checkbox.setAttribute('data-code', item.code);
+        
+        // Сохраняем идентификатор товара
+        if (currentMode === 'kassa' && !item.code) {
+            // В режиме КАССА для товаров без кода используем data-name
+            checkbox.setAttribute('data-name', itemIdentifier);
+        } else {
+            checkbox.setAttribute('data-code', itemIdentifier);
+        }
+        
         checkbox.setAttribute('title', isChecked ? 'Отменить проверку' : 'Отметить как проверенное');
         
         checkboxCell.appendChild(checkbox);
@@ -1274,7 +1630,7 @@ function fillTable(tableId, items, columns, rowClass = '') {
                 if (item.status === 'ok') icon = 'fa-check-circle';
                 else if (item.status === 'missing') icon = 'fa-times-circle';
                 else if (item.status === 'extra') icon = 'fa-plus-circle';
-                else if (item.status === 'mismatch') icon = 'fa-exclamation-circle';
+                else if (item.status === 'mismatch') icon = 'fa-exchange-alt';
                 else if (item.status === 'incomplete') icon = 'fa-exclamation-circle';
                 
                 if (icon) {
@@ -1302,8 +1658,22 @@ function fillTable(tableId, items, columns, rowClass = '') {
                     nameContainer.appendChild(markingSpan);
                 }
                 
+                // Используем правильное название товара
                 const nameText = document.createElement('span');
-                nameText.textContent = item[column] || '';
+                
+                if (currentMode === 'kassa') {
+                    // Для режима КАССА приоритет выбора названия:
+                    // 1. Оригинальное название из кассы (если доступно)
+                    // 2. Название товара из кассы (если сопоставлено)
+                    // 3. Оригинальное название товара
+                    // 4. Обычное название товара
+                    const displayName = item.originalName || item.kassaName || item.name;
+                    nameText.textContent = displayName || '';
+                } else {
+                    // Для режима СБИС используем стандартное имя
+                    nameText.textContent = item[column] || '';
+                }
+                
                 nameContainer.appendChild(nameText);
                 
                 cell.appendChild(nameContainer);
@@ -1339,25 +1709,50 @@ function fillTable(tableId, items, columns, rowClass = '') {
 function toggleItemChecked(event) {
     const checkbox = event.currentTarget;
     const code = checkbox.getAttribute('data-code');
+    const name = checkbox.getAttribute('data-name');
     const row = checkbox.closest('tr');
     
-    // Переключаем состояние
-    if (checkedItems.has(code)) {
-        checkbox.classList.remove('checked');
-        row.classList.remove('checked-row');
-        checkedItems.delete(code);
-    } else {
-        checkbox.classList.add('checked');
-        row.classList.add('checked-row');
-        checkedItems.set(code, true);
+    // Определяем идентификатор товара
+    let itemIdentifier = code;
+    
+    // Проверяем, используем ли мы имя как идентификатор
+    if (!code && name && currentMode === 'kassa') {
+        // В режиме КАССА для товаров без кода используем имя как идентификатор
+        itemIdentifier = name;
+    } else if (!code && currentMode === 'kassa') {
+        // Если не удалось получить идентификатор из атрибутов, используем текст ячейки с именем
+        const cells = row.querySelectorAll('td');
+        if (cells.length > 1) {
+            // Берем название товара из второй ячейки (первая - чекбокс)
+            const nameCell = cells[1];
+            const nameText = nameCell ? nameCell.textContent.trim() : '';
+            itemIdentifier = nameText;
+        }
     }
     
-    // Обновляем все представления одной и той же позиции в разных таблицах
-    updateCheckedStatusAcrossTables(code);
+    // Если у нас есть какой-то идентификатор, продолжаем
+    if (itemIdentifier) {
+        // Переключаем состояние
+        if (checkedItems.has(itemIdentifier)) {
+            checkbox.classList.remove('checked');
+            row.classList.remove('checked-row');
+            checkedItems.delete(itemIdentifier);
+        } else {
+            checkbox.classList.add('checked');
+            row.classList.add('checked-row');
+            checkedItems.set(itemIdentifier, true);
+        }
+        
+        // Определяем, используем ли мы имя для обновления других представлений
+        const isNameMode = !code && currentMode === 'kassa';
+        
+        // Обновляем все представления одной и той же позиции в разных таблицах
+        updateCheckedStatusAcrossTables(itemIdentifier, isNameMode);
+    }
     
     // Если мы находимся во вкладке ошибок и отметили товар, скрываем его из этой вкладки
     const currentTabName = document.querySelector('.tab-btn.active').getAttribute('data-tab');
-    if (currentTabName === 'errors' && checkedItems.has(code)) {
+    if (currentTabName === 'errors' && (checkedItems.has(itemIdentifier))) {
         // Скрываем строку в текущей вкладке после анимации
         row.style.transition = 'opacity 0.3s ease-out';
         row.style.opacity = '0';
@@ -1365,7 +1760,7 @@ function toggleItemChecked(event) {
             // После завершения анимации, обновляем таблицы с сохранением текущей сортировки
             applyFilterAndSort();
         }, 300);
-    } else if (currentTabName === 'checked' && !checkedItems.has(code)) {
+    } else if (currentTabName === 'checked' && !checkedItems.has(itemIdentifier)) {
         // Если мы находимся во вкладке отмеченных и сняли отметку с товара
         row.style.transition = 'opacity 0.3s ease-out';
         row.style.opacity = '0';
@@ -1385,8 +1780,35 @@ function toggleItemChecked(event) {
 }
 
 // Обновляем статус проверки позиции во всех таблицах
-function updateCheckedStatusAcrossTables(code) {
-    const allCheckboxes = document.querySelectorAll(`.item-checkbox[data-code="${code}"]`);
+function updateCheckedStatusAcrossTables(code, isNameMode = false) {
+    // Если isNameMode == true, то code содержит название товара, а не его код
+    let allCheckboxes;
+    
+    if (isNameMode) {
+        // Ищем чекбоксы по содержимому ячейки с названием
+        allCheckboxes = [];
+        const allRows = document.querySelectorAll('tr');
+        
+        allRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 1) {
+                // Ячейка с названием товара, обычно вторая колонка (после чекбокса)
+                const nameCell = cells[1];
+                const nameText = nameCell ? nameCell.textContent.trim() : '';
+                
+                if (nameText === code) { // code в этом случае - это имя товара
+                    const checkbox = row.querySelector('.item-checkbox');
+                    if (checkbox) {
+                        allCheckboxes.push(checkbox);
+                    }
+                }
+            }
+        });
+    } else {
+        // Стандартный режим поиска по атрибуту data-code
+        allCheckboxes = document.querySelectorAll(`.item-checkbox[data-code="${code}"]`);
+    }
+    
     const isChecked = checkedItems.has(code);
     
     allCheckboxes.forEach(checkbox => {
@@ -1395,7 +1817,7 @@ function updateCheckedStatusAcrossTables(code) {
         if (isChecked) {
             checkbox.classList.add('checked');
             row.classList.add('checked-row');
-                    } else {
+        } else {
             checkbox.classList.remove('checked');
             row.classList.remove('checked-row');
         }
@@ -1559,7 +1981,7 @@ function applyFilterAndSort() {
     
     const filteredScan = filterResults(comparisonResults.scan, 'scan');
     const sortedScan = sortResults(filteredScan, 'scan');
-    fillTable('scanTable', sortedScan, ['code', 'name', 'scanQuantity', 'status']);
+    fillTable('scanTable', sortedScan, ['code', 'name', 'orderQuantity', 'scanQuantity', 'status']);
     
     // Проверяем наличие свойства errors
     const errors = comparisonResults.errors || [];
@@ -1587,7 +2009,7 @@ function applyFilterAndSort() {
     
     const filteredMismatch = filterResults(comparisonResults.mismatch, 'mismatch');
     const sortedMismatch = sortResults(filteredMismatch, 'mismatch');
-    fillTable('mismatchTable', sortedMismatch, ['code', 'name', 'orderQuantity', 'scanQuantity', 'difference'], 'mismatch-row');
+    fillTable('mismatchTable', sortedMismatch, ['code', 'name', 'orderQuantity', 'scanQuantity'], 'mismatch-row');
     
     // Добавляем фильтрацию и сортировку для некорректных товаров
     const filteredIncomplete = filterResults(comparisonResults.incomplete, 'incomplete');
@@ -1599,11 +2021,38 @@ function applyFilterAndSort() {
         const field = header.getAttribute('data-field');
         const icon = header.querySelector('i');
         
-        if (field === currentSort.field) {
-            icon.className = currentSort.direction === 'asc' ? 
-                'fas fa-sort-up' : 'fas fa-sort-down';
+        // Сбрасываем все иконки и атрибуты
+        header.removeAttribute('aria-sort');
+        
+        // Проверяем, существует ли icon перед установкой className
+        if (!icon) {
+            // Создаем иконку, если она отсутствует
+            const newIcon = document.createElement('i');
+            newIcon.className = 'fas fa-sort';
+            header.appendChild(newIcon);
+            
+            // Используем созданную иконку
+            if (header.getAttribute('data-field') === currentSort.field) {
+                if (currentSort.direction === 'asc') {
+                    newIcon.className = 'fas fa-sort-up';
+                    header.setAttribute('aria-sort', 'ascending');
+                } else {
+                    newIcon.className = 'fas fa-sort-down';
+                    header.setAttribute('aria-sort', 'descending');
+                }
+            }
         } else {
-            icon.className = 'fas fa-sort';
+            if (header.getAttribute('data-field') === currentSort.field) {
+                if (currentSort.direction === 'asc') {
+                    icon.className = 'fas fa-sort-up';
+                    header.setAttribute('aria-sort', 'ascending');
+                } else {
+                    icon.className = 'fas fa-sort-down';
+                    header.setAttribute('aria-sort', 'descending');
+                }
+            } else {
+                icon.className = 'fas fa-sort';
+            }
         }
     });
     
@@ -1613,11 +2062,18 @@ function applyFilterAndSort() {
 
 // Отображение сводной статистики
 function displayStats(results) {
+    // Проверяем наличие всех необходимых массивов
+    results.all = results.all || [];
+    results.missing = results.missing || [];
+    results.extra = results.extra || [];
+    results.mismatch = results.mismatch || [];
+    results.incomplete = results.incomplete || [];
+    
     document.getElementById('orderItems').textContent = results.all.filter(item => item.orderQuantity > 0).length;
     document.getElementById('scanItems').textContent = results.all.filter(item => item.scanQuantity > 0).length;
     document.getElementById('missingItems').textContent = results.missing.length;
     document.getElementById('extraItems').textContent = results.extra.length;
-    document.getElementById('quantityMismatches').textContent = results.mismatch.length;
+    document.getElementById('quantityMismatches').textContent = results.mismatch ? results.mismatch.length : 0;
     document.getElementById('incompleteItems').textContent = results.incomplete.length;
     
     // Анимируем числа в статистике
@@ -1664,6 +2120,15 @@ function getStatusText(status) {
 
 // Добавляем счетчики в заголовки вкладок
 function updateTabCounters(results) {
+    // Проверяем наличие всех необходимых массивов
+    results.all = results.all || [];
+    results.scan = results.scan || [];
+    results.errors = results.errors || [];
+    results.missing = results.missing || [];
+    results.extra = results.extra || [];
+    results.mismatch = results.mismatch || [];
+    results.incomplete = results.incomplete || [];
+    
     // Получаем все вкладки
     const allTab = document.querySelector('.tab-btn[data-tab="all"]');
     const scanTab = document.querySelector('.tab-btn[data-tab="scan"]');
@@ -1675,20 +2140,23 @@ function updateTabCounters(results) {
     const checkedTab = document.querySelector('.tab-btn[data-tab="checked"]');
     
     // Проверяем наличие свойства errors перед использованием
-    const errorsCount = results.errors ? results.errors.filter(item => !checkedItems.has(item.code)).length : 0;
-    const incompleteCount = results.incomplete ? results.incomplete.length : 0;
+    const errorsCount = results.errors.filter(item => !checkedItems.has(item.code)).length;
+    const incompleteCount = results.incomplete.length;
     
     // Считаем количество всех отмеченных товаров с ошибками 
     // независимо от фильтра маркировки - проверяем только статус и наличие в Map checkedItems
-    const checkedErrorsCount = results.all ? results.all.filter(item => 
+    const checkedErrorsCount = results.all.filter(item => 
         checkedItems.has(item.code) && 
         (item.status === 'missing' || item.status === 'extra' || 
          item.status === 'mismatch' || item.status === 'incomplete')
-    ).length : 0;
+    ).length;
+    
+    // Определяем текст для вкладки scanTab в зависимости от режима
+    const scanTabText = currentMode === 'kassa' ? 'Товары в КАССЕ' : 'Товары в СБИС';
     
     // Обновляем текст вкладок с учетом количества элементов
     allTab.innerHTML = `<i class="fas fa-list"></i> Все товары <span class="tab-counter">${results.all.length}</span>`;
-    scanTab.innerHTML = `<i class="fas fa-barcode"></i> Товары в СБИС <span class="tab-counter">${results.scan.length}</span>`;
+    scanTab.innerHTML = `<i class="fas fa-barcode"></i> ${scanTabText} <span class="tab-counter">${results.scan.length}</span>`;
     errorsTab.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Ошибки <span class="tab-counter">${errorsCount}</span>`;
     missingTab.innerHTML = `<i class="fas fa-times-circle"></i> Отсутствующие <span class="tab-counter">${results.missing.length}</span>`;
     extraTab.innerHTML = `<i class="fas fa-plus-circle"></i> Избыточные <span class="tab-counter">${results.extra.length}</span>`;
@@ -1740,17 +2208,32 @@ function isProductUnmarked(product) {
 
 // Функция сброса загруженных файлов
 function resetFiles() {
-    // Очищаем глобальные переменные
+    // Сбрасываем все данные
     orderData = null;
     scanData = null;
+    kassaTextData = null;
     comparisonResults = null;
     orderFile = null;
     scanFile = null;
+    currentOrderHash = null;
     
-    // Очищаем поле ввода файлов
+    // Очищаем отображение результатов
+    statsContainer.style.display = 'none';
+    document.querySelectorAll('.tab-content').forEach(content => {
+        const tableContainer = content.querySelector('.table-container');
+        if (tableContainer) {
+            tableContainer.innerHTML = '<p class="no-data">Нет данных для отображения. Загрузите файлы и выполните анализ.</p>';
+        }
+        
+        // Очищаем таблицы напрямую
+        const table = content.querySelector('table tbody');
+        if (table) {
+            table.innerHTML = '';
+        }
+    });
+    
+    // Сбрасываем выбранные файлы
     fileInput.value = '';
-    
-    // Очищаем отображение выбранных файлов
     const selectedFilesContainer = document.getElementById('selectedFiles');
     if (selectedFilesContainer) {
         selectedFilesContainer.innerHTML = '';
@@ -1760,31 +2243,21 @@ function resetFiles() {
     analyzeBtn.disabled = true;
     analyzeBtn.classList.remove('active-btn');
     
-    // Очищаем результаты
-    const resultTables = ['allTable', 'scanTable', 'errorsTable', 'missingTable', 'extraTable', 'mismatchTable', 'incompleteTable'];
-    resultTables.forEach(tableId => {
-        const table = document.getElementById(tableId);
-        if (table) table.innerHTML = '';
-    });
+    // Очищаем все отмеченные позиции
+    checkedItems.clear();
     
-    // Скрываем блок статистики
-    statsContainer.style.display = 'none';
-    
-    // Очищаем счетчики в заголовках вкладок
-    const tabsList = ['all', 'scan', 'errors', 'missing', 'extra', 'mismatch', 'incomplete'];
-    tabsList.forEach(tabName => {
-        const tab = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
-        if (tab) {
-            // Сохраняем иконку
-            const icon = tab.querySelector('i').className;
-            tab.innerHTML = `<i class="${icon}"></i> ${getTabTitle(tabName)}`;
+    // Очищаем поле текста кассы, если в режиме КАССА
+    if (currentMode === 'kassa') {
+        const kassaTextInput = document.getElementById('kassaTextInput');
+        if (kassaTextInput) {
+            kassaTextInput.value = '';
         }
-    });
+    }
     
     // Показываем уведомление
-    showNotification('Сброс', 'Загруженные файлы сброшены', 'info');
+    showNotification('Сброс', 'Все данные сброшены', 'info');
     
-    console.log('Загруженные файлы сброшены');
+    console.log('Все данные сброшены');
 }
 
 // Функция получения текстового заголовка вкладки
@@ -2009,16 +2482,35 @@ function addTableHeaderSorting() {
                 // Сбрасываем все иконки и атрибуты
                 h.removeAttribute('aria-sort');
                 
-                if (h.getAttribute('data-field') === currentSort.field) {
-                    if (currentSort.direction === 'asc') {
-                        icon.className = 'fas fa-sort-up';
-                        h.setAttribute('aria-sort', 'ascending');
-                    } else {
-                        icon.className = 'fas fa-sort-down';
-                        h.setAttribute('aria-sort', 'descending');
+                // Проверяем, существует ли icon перед установкой className
+                if (!icon) {
+                    // Создаем иконку, если она отсутствует
+                    const newIcon = document.createElement('i');
+                    newIcon.className = 'fas fa-sort';
+                    h.appendChild(newIcon);
+                    
+                    // Используем созданную иконку
+                    if (h.getAttribute('data-field') === currentSort.field) {
+                        if (currentSort.direction === 'asc') {
+                            newIcon.className = 'fas fa-sort-up';
+                            h.setAttribute('aria-sort', 'ascending');
+                        } else {
+                            newIcon.className = 'fas fa-sort-down';
+                            h.setAttribute('aria-sort', 'descending');
+                        }
                     }
                 } else {
-                    icon.className = 'fas fa-sort';
+                    if (h.getAttribute('data-field') === currentSort.field) {
+                        if (currentSort.direction === 'asc') {
+                            icon.className = 'fas fa-sort-up';
+                            h.setAttribute('aria-sort', 'ascending');
+                        } else {
+                            icon.className = 'fas fa-sort-down';
+                            h.setAttribute('aria-sort', 'descending');
+                        }
+                    } else {
+                        icon.className = 'fas fa-sort';
+                    }
                 }
             });
             
@@ -2080,7 +2572,11 @@ function toggleAllUnmarkedItems() {
     if (changedCount > 0) {
         // Обновляем визуально все чекбоксы на странице
         document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+            if (!checkbox) return; // Пропускаем, если чекбокс не найден
+            
             const code = checkbox.getAttribute('data-code');
+            if (!code) return; // Пропускаем, если код не найден
+            
             const row = checkbox.closest('tr');
             
             if (checkedItems.has(code)) {
@@ -2997,7 +3493,11 @@ function toggleAllUnmarkedItems() {
     if (changedCount > 0) {
         // Обновляем визуально все чекбоксы на странице
         document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+            if (!checkbox) return; // Пропускаем, если чекбокс не найден
+            
             const code = checkbox.getAttribute('data-code');
+            if (!code) return; // Пропускаем, если код не найден
+            
             const row = checkbox.closest('tr');
             
             if (checkedItems.has(code)) {
@@ -3020,3 +3520,367 @@ function toggleAllUnmarkedItems() {
         showNotification('Отметка товаров', 'Нет товаров без маркировки для изменения статуса отметки.', 'info');
     }
 }
+
+// Функция для обработки текста из кассы
+function extractProductsFromKassaText(text) {
+    if (!text) return [];
+    
+    console.log('Извлечение товаров из текста кассы...');
+    
+    // Объект для хранения уникальных товаров и их количества
+    const productMap = new Map();
+    const lines = text.split('\n');
+    
+    // Регулярное выражение для извлечения информации из строк кассы
+    // Ищем строки вида "номерНазвание товара (возможно с примечаниями)"
+    const productRegex = /^\d+([A-Za-z\s\-]+)\s*-\s*([^(]+)(?:\(([^)]+)\))?/;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // Пропускаем пустые строки и заголовки
+        if (!line || line.includes('Продажа') || line.includes('Найти') || 
+            line.includes('ХР') || line.includes('Скидка') || line.includes('Клиент') || 
+            line.includes('Наличные') || line.includes('К оплате')) {
+            continue;
+        }
+        
+        // Сначала ищем строки, содержащие известные бренды
+        let productName = "";
+        const knownBrands = ['Musthave', 'Dark Side Core', 'Sebero Black'];
+        let foundBrand = false;
+        
+        for (const brand of knownBrands) {
+            if (line.includes(brand)) {
+                // Находим позицию бренда и вырезаем всё после него до конца строки или до цены
+                const brandPos = line.indexOf(brand);
+                const pricePos = line.indexOf('x1') > -1 ? line.indexOf('x1') : line.length;
+                
+                productName = line.substring(brandPos, pricePos).trim();
+                foundBrand = true;
+                break;
+            }
+        }
+        
+        // Если не нашли известный бренд, проверяем через регулярное выражение
+        if (!foundBrand) {
+            const match = line.match(productRegex);
+            if (match) {
+                let brand = match[1] ? match[1].trim() : '';
+                let name = match[2] ? match[2].trim() : '';
+                let note = match[3] ? ` (${match[3].trim()})` : '';
+                
+                if (brand && name) {
+                    productName = `${brand} - ${name}${note}`;
+                }
+            }
+        }
+        
+        // Если всё равно не смогли извлечь название, попробуем взять просто начало строки до цены
+        if (!productName && /^\d+/.test(line)) {
+            const nameStart = line.search(/[A-Za-z]/);
+            const pricePos = line.indexOf('x1') > -1 ? line.indexOf('x1') : line.length;
+            
+            if (nameStart > -1 && nameStart < pricePos) {
+                productName = line.substring(nameStart, pricePos).trim();
+            }
+        }
+        
+        // Если получили название товара, добавляем или обновляем его в Map
+        if (productName) {
+            // Проверяем, есть ли уже такой товар в Map
+            if (productMap.has(productName)) {
+                // Если товар уже есть, увеличиваем его количество на 1
+                const product = productMap.get(productName);
+                product.quantity += 1;
+            } else {
+                // Если товара еще нет, создаем новую запись
+                const product = {
+                    code: '', // Нет артикула в режиме КАССА
+                    name: productName,
+                    originalName: productName, // Сохраняем оригинальное название для отображения
+                    quantity: 1, // Начальное количество
+                    barcode: '' // Нет штрих-кода в режиме КАССА
+                };
+                productMap.set(productName, product);
+            }
+        } else if (/\d+\.\d+x\d+/.test(line)) {
+            // Пропускаем строки с ценами (формат: цена x количество)
+            continue;
+        }
+    }
+    
+    // Преобразуем Map в массив товаров
+    const products = Array.from(productMap.values());
+    
+    console.log(`Извлечено ${products.length} уникальных товаров из текста кассы (с учетом количества)`);
+    
+    // Выводим информацию о товарах с количеством больше 1
+    const multipleItems = products.filter(p => p.quantity > 1);
+    if (multipleItems.length > 0) {
+        console.log(`Товары с количеством > 1 (${multipleItems.length} шт.):`);
+        multipleItems.forEach(p => {
+            console.log(`- ${p.name}: ${p.quantity} шт.`);
+        });
+    }
+    
+    return products;
+}
+
+// Функция для сравнения товаров в режиме КАССА
+function compareProductsByName(orderProducts, kassaProducts) {
+    console.log('Сравнение товаров по названию...');
+    console.log(`Товаров в заказе: ${orderProducts.length}, Товаров в кассе: ${kassaProducts.length}`);
+    
+    const results = {
+        orderItems: orderProducts,
+        scanItems: kassaProducts,
+        matched: [],
+        missing: [],
+        extra: [],
+        quantityMismatch: [],
+        incomplete: [],
+        // Добавляем недостающие массивы для функции displayResults
+        all: [],
+        scan: [],
+        mismatch: [],
+        errors: []
+    };
+    
+    // Функция для нормализации названия товара (удаление лишних символов, перевод в нижний регистр)
+    const normalizeProductName = (name) => {
+        return name.toLowerCase()
+            .replace(/\s+/g, ' ')
+            .replace(/[\(\)]/g, '')
+            .trim();
+    };
+    
+    // Функция для вычисления схожести строк (используем простую метрику)
+    const calculateSimilarity = (str1, str2) => {
+        const str1Normalized = normalizeProductName(str1);
+        const str2Normalized = normalizeProductName(str2);
+        
+        // Проверяем полное совпадение
+        if (str1Normalized === str2Normalized) {
+            return 1.0;
+        }
+        
+        // Проверяем, содержит ли одна строка другую
+        if (str1Normalized.includes(str2Normalized)) {
+            return 0.9;
+        }
+        
+        if (str2Normalized.includes(str1Normalized)) {
+            return 0.9;
+        }
+        
+        // Подсчитываем количество общих слов
+        const words1 = str1Normalized.split(' ');
+        const words2 = str2Normalized.split(' ');
+        
+        let commonWords = 0;
+        for (const word1 of words1) {
+            if (word1.length < 3) continue; // Игнорируем короткие слова
+            for (const word2 of words2) {
+                if (word2.length < 3) continue;
+                if (word1 === word2 || word1.includes(word2) || word2.includes(word1)) {
+                    commonWords++;
+                    break;
+                }
+            }
+        }
+        
+        // Вычисляем коэффициент схожести
+        const maxWords = Math.max(words1.length, words2.length);
+        return commonWords / maxWords;
+    };
+    
+    // Порог схожести для считания товаров одинаковыми
+    const similarityThreshold = 0.7;
+    
+    // Создаем копии массивов для работы
+    const remainingOrderProducts = [...orderProducts];
+    const remainingKassaProducts = [...kassaProducts];
+    
+    // Ищем совпадения
+    for (let i = 0; i < orderProducts.length; i++) {
+        const orderProduct = orderProducts[i];
+        let bestMatch = null;
+        let bestMatchIndex = -1;
+        let bestSimilarity = 0;
+        
+        for (let j = 0; j < remainingKassaProducts.length; j++) {
+            const kassaProduct = remainingKassaProducts[j];
+            const similarity = calculateSimilarity(orderProduct.name, kassaProduct.name);
+            
+            if (similarity > similarityThreshold && similarity > bestSimilarity) {
+                bestMatch = kassaProduct;
+                bestMatchIndex = j;
+                bestSimilarity = similarity;
+            }
+        }
+        
+        if (bestMatch) {
+            // Нашли совпадение
+            const matchedItem = {
+                code: orderProduct.code,
+                name: orderProduct.name,
+                kassaName: bestMatch.originalName || bestMatch.name, // Используем оригинальное название, если оно есть
+                orderQuantity: orderProduct.quantity,
+                scanQuantity: bestMatch.quantity,
+                similarity: bestSimilarity,
+                status: 'matched'
+            };
+            
+            // Проверяем несовпадение количества
+            if (orderProduct.quantity !== bestMatch.quantity && orderProduct.quantity > 0 && bestMatch.quantity > 0) {
+                matchedItem.status = 'mismatch';
+                matchedItem.difference = bestMatch.quantity - orderProduct.quantity;
+                results.quantityMismatch.push(matchedItem);
+                results.mismatch.push(matchedItem);
+                results.errors.push(matchedItem); // Добавляем в список ошибок
+            } else {
+                matchedItem.status = 'ok';
+                results.matched.push(matchedItem);
+            }
+            
+            // Добавляем в общий список
+            results.all.push(matchedItem);
+            
+            // Удаляем найденный товар из списка оставшихся
+            remainingKassaProducts.splice(bestMatchIndex, 1);
+        } else {
+            // Не нашли совпадение - товар отсутствует
+            const missingItem = {
+                code: orderProduct.code,
+                name: orderProduct.name,
+                orderQuantity: orderProduct.quantity,
+                scanQuantity: 0,
+                status: 'missing'
+            };
+            results.missing.push(missingItem);
+            results.all.push(missingItem);
+            results.errors.push(missingItem);
+        }
+    }
+    
+    // Оставшиеся товары в кассе - это избыточные товары
+    for (const kassaProduct of remainingKassaProducts) {
+        const extraItem = {
+            code: '',
+            name: kassaProduct.originalName || kassaProduct.name, // Используем оригинальное название, если оно есть
+            orderQuantity: 0,
+            scanQuantity: kassaProduct.quantity,
+            status: 'extra'
+        };
+        results.extra.push(extraItem);
+        results.all.push(extraItem);
+        results.errors.push(extraItem);
+    }
+    
+    // Добавляем товары кассы в список scan
+    for (const kassaProduct of kassaProducts) {
+        // Пытаемся найти соответствие в массиве quantityMismatch
+        const mismatchItem = results.quantityMismatch.find(item => 
+            (item.kassaName === kassaProduct.originalName || item.kassaName === kassaProduct.name));
+        
+        if (mismatchItem) {
+            // Это товар с несоответствием количества
+            const scanItem = {
+                code: mismatchItem.code,
+                name: kassaProduct.originalName || kassaProduct.name,
+                orderQuantity: mismatchItem.orderQuantity,
+                scanQuantity: kassaProduct.quantity,
+                status: 'mismatch'
+            };
+            results.scan.push(scanItem);
+        } else {
+            // Проверяем, есть ли этот товар в списке matched
+            const matchedItem = results.matched.find(item => 
+                (item.kassaName === kassaProduct.originalName || item.kassaName === kassaProduct.name));
+            
+            if (matchedItem) {
+                // Это товар с соответствующим количеством
+                const scanItem = {
+                    code: matchedItem.code,
+                    name: kassaProduct.originalName || kassaProduct.name,
+                    orderQuantity: matchedItem.orderQuantity,
+                    scanQuantity: kassaProduct.quantity,
+                    status: 'ok'
+                };
+                results.scan.push(scanItem);
+            } else {
+                // Это избыточный товар
+                const scanItem = {
+                    code: '',
+                    name: kassaProduct.originalName || kassaProduct.name,
+                    orderQuantity: 0,
+                    scanQuantity: kassaProduct.quantity,
+                    status: 'extra'
+                };
+                results.scan.push(scanItem);
+            }
+        }
+    }
+    
+    // Обновляем счетчики
+    results.matchedCount = results.matched.length;
+    results.missingCount = results.missing.length;
+    results.extraCount = results.extra.length;
+    results.quantityMismatchCount = results.quantityMismatch.length;
+    results.incompleteCount = results.incomplete.length;
+    
+    // Добавляем некорректные товары в список ошибок
+    results.incomplete.forEach(item => {
+        if (!results.errors.includes(item)) {
+            results.errors.push(item);
+        }
+    });
+    
+    console.log('Сравнение товаров завершено');
+    console.log(`Совпадений: ${results.matchedCount}, Отсутствующих: ${results.missingCount}, `
+              + `Избыточных: ${results.extraCount}, Несоответствий количества: ${results.quantityMismatchCount}`);
+    
+    return results;
+}
+
+// Переключение режимов СБИС и КАССА
+document.getElementById('sbisModeBtn').addEventListener('click', function() {
+    if (currentMode !== 'sbis') {
+        currentMode = 'sbis';
+        document.getElementById('sbisModeBtn').classList.add('active');
+        document.getElementById('kassaModeBtn').classList.remove('active');
+        
+        // Скрываем поле для текста кассы
+        const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
+        if (kassaTextInputContainer) {
+            kassaTextInputContainer.style.display = 'none';
+        }
+        
+        // Обновляем заголовок вкладки со сканированием
+        updateScanTabLabel('СБИС');
+        
+        // Сбрасываем все данные при переключении режимов
+        resetFiles();
+    }
+});
+
+document.getElementById('kassaModeBtn').addEventListener('click', function() {
+    if (currentMode !== 'kassa') {
+        currentMode = 'kassa';
+        document.getElementById('kassaModeBtn').classList.add('active');
+        document.getElementById('sbisModeBtn').classList.remove('active');
+        
+        // Показываем поле для текста кассы
+        const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
+        if (kassaTextInputContainer) {
+            kassaTextInputContainer.style.display = 'block';
+        }
+        
+        // Обновляем заголовок вкладки со сканированием
+        updateScanTabLabel('КАССЕ');
+        
+        // Сбрасываем все данные при переключении режимов
+        resetFiles();
+    }
+});

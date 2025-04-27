@@ -71,33 +71,94 @@
                 Загрузка файлов
             </h2>
             
-            <div id="dropZone">
-                <div class="upload-decoration">
-                    <div class="decoration-circle circle1"></div>
-                    <div class="decoration-circle circle2"></div>
-                    <div class="decoration-circle circle3"></div>
-                </div>
-                
-                <div class="upload-icon">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                </div>
-                
-                <label for="fileInput" class="file-label">
-                    Выберите файлы для сравнения
-                </label>
-                
-                <p class="file-hint">
-                    Перетащите файлы в эту область или нажмите кнопку ниже для выбора через диалог
-                    <br><small>(заказ МС и сканирование СБИС)</small>
-                    <br><small class="file-format-hint">Поддерживаемые форматы: Excel (.xls, .xlsx)</small>
-                </p>
-                
-                <input type="file" id="fileInput" class="file-input" multiple accept=".xlsx,.xls" style="display: none;">
-                
-                <button class="select-files-btn">
-                    <i class="fas fa-folder-open"></i>
-                    <span>Выбрать файлы</span>
+            <!-- Добавляем переключатели режимов -->
+            <div class="mode-toggle">
+                <button id="sbisModeBtn" class="mode-btn active">
+                    <i class="fas fa-store"></i>
+                    <span>СБИС</span>
                 </button>
+                <button id="kassaModeBtn" class="mode-btn">
+                    <i class="fas fa-cash-register"></i>
+                    <span>КАССА</span>
+                </button>
+            </div>
+
+            <div class="file-kassa-container">
+                <div id="dropZone">
+                    <div class="upload-decoration">
+                        <div class="decoration-circle circle1"></div>
+                        <div class="decoration-circle circle2"></div>
+                        <div class="decoration-circle circle3"></div>
+                    </div>
+                    
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    
+                    <label for="fileInput" class="file-label" id="fileLabel">
+                        Выберите файлы для сравнения
+                    </label>
+                    
+                    <p class="file-hint" id="fileHint">
+                        Перетащите файлы в эту область или нажмите кнопку ниже для выбора через диалог
+                        <br><small>(заказ МС и сканирование СБИС)</small>
+                        <br><small class="file-format-hint">Поддерживаемые форматы: Excel (.xls, .xlsx)</small>
+                    </p>
+                    
+                    <input type="file" id="fileInput" class="file-input" multiple accept=".xlsx,.xls" style="display: none;">
+                    
+                    <div class="file-steps">
+                        <div class="file-step">
+                            <span class="step-number">1</span>
+                            <span class="step-text">Выберите или перетащите файл</span>
+                        </div>
+                        <i class="fas fa-arrow-right step-arrow"></i>
+                        <div class="file-step">
+                            <span class="step-number">2</span>
+                            <span class="step-text">Вставьте текст из кассы</span>
+                        </div>
+                        <i class="fas fa-arrow-right step-arrow"></i>
+                        <div class="file-step">
+                            <span class="step-number">3</span>
+                            <span class="step-text">Нажмите "Сравнить"</span>
+                        </div>
+                    </div>
+                    
+                    <button class="select-files-btn">
+                        <i class="fas fa-folder-open"></i>
+                        <span>Выбрать файлы</span>
+                    </button>
+                </div>
+                
+                <!-- Добавляем поле для вставки текста (скрыто по умолчанию) -->
+                <div id="kassaTextInputContainer" style="display: none;" class="kassa-text-input-container">
+                    <div class="upload-icon">
+                        <i class="fas fa-keyboard"></i>
+                    </div>
+                    
+                    <h3 class="file-label">Данные кассы</h3>
+                    
+                    <p class="file-hint">
+                        Вставьте текст чека/накладной из кассы для сравнения с заказом
+                        <br><small class="file-format-hint">Поддерживаются текстовые данные из кассовой программы</small>
+                    </p>
+                    
+                    <textarea id="kassaTextInput" placeholder="Вставьте текст из кассы сюда...
+Например:
+шт
+252.00
+Dark Side Core - Код Черри (Вишня), 30 гр (м)
+252.00x1" rows="10" class="kassa-text-input"></textarea>
+                    
+                    <button class="select-files-btn paste-kassa-btn" id="pasteBtnKassa">
+                        <i class="fas fa-paste"></i>
+                        <span>Вставить из буфера</span>
+                    </button>
+                    
+                    <div class="paste-shortcut-hint">
+                        <small><i class="fas fa-keyboard"></i> Или используйте Ctrl+V для вставки</small>
+                    </div>
+                </div>
             </div>
             
             <!-- Контейнер для отображения выбранных файлов -->
@@ -211,7 +272,6 @@
                             <th title="Нажмите для сортировки по наименованию">Наименование</th>
                             <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
                             <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
-                            <th title="Нажмите для сортировки по статусу">Статус</th>
                         </tr>
                     </thead>
                     <tbody id="allTable"></tbody>
@@ -225,6 +285,7 @@
                             <th style="width: 40px;" title="Отметка о проверке">☑</th>
                             <th title="Нажмите для сортировки по коду товара">Код</th>
                             <th title="Нажмите для сортировки по наименованию">Наименование</th>
+                            <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
                             <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
                             <th title="Нажмите для сортировки по статусу">Статус</th>
                         </tr>
@@ -286,7 +347,6 @@
                             <th title="Нажмите для сортировки по наименованию">Наименование</th>
                             <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
                             <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
-                            <th title="Нажмите для сортировки по разнице в количестве">Разница</th>
                         </tr>
                     </thead>
                     <tbody id="mismatchTable"></tbody>
@@ -505,7 +565,7 @@
                         </li>
                         <li class="guide-tab" data-guide-section="comparison">
                             <i class="fas fa-search"></i>
-                            <span>Сравнение</span>
+                            <span>Режимы работы</span>
                         </li>
                         <li class="guide-tab" data-guide-section="results">
                             <i class="fas fa-table"></i>
@@ -521,34 +581,33 @@
                 <div class="guide-content">
                     <!-- Раздел: Начало работы -->
                     <div class="guide-section active" id="guide-start">
-                        <h4>Добро пожаловать!</h4>
+                        <h4>Добро пожаловать в CrossCheck Pro!</h4>
                         <p class="guide-description">
-                            Система сравнения заказов предоставляет удобный интерфейс для анализа расхождений между данными МС и СБИС. Интуитивно понятная навигация и наглядное представление результатов помогут быстро находить несоответствия.
+                            CrossCheck Pro — это профессиональное решение для сверки и анализа данных из СБИС и кассовых систем. Приложение позволяет выявлять несоответствия, отсутствующие записи и расхождения в количестве товаров, повышая точность учёта и эффективность бизнес-процессов.
                         </p>
-                        <p>Система сравнения заказов позволяет быстро выявить расхождения между заказом в МС и фактическими данными СБИС.</p>
                         
                         <div class="guide-steps">
                             <div class="guide-step">
                                 <div class="step-number">1</div>
                                 <div class="step-content">
-                                    <h5>Загрузите файлы</h5>
-                                    <p>Загрузите два файла Excel: заказ МС и сканирование СБИС, перетащив их в область загрузки или выбрав через диалог.</p>
+                                    <h5>Выберите режим работы</h5>
+                                    <p>Выберите один из двух режимов: СБИС или КАССА, в зависимости от типа данных, с которыми работаете.</p>
                                 </div>
                             </div>
                             
                             <div class="guide-step">
                                 <div class="step-number">2</div>
                                 <div class="step-content">
-                                    <h5>Запустите сравнение</h5>
-                                    <p>Нажмите кнопку "Сравнить файлы", чтобы система проанализировала данные и выявила расхождения.</p>
+                                    <h5>Загрузите данные</h5>
+                                    <p>Загрузите файлы или введите данные вручную в текстовое поле (для режима КАССА).</p>
                                 </div>
                             </div>
                             
                             <div class="guide-step">
                                 <div class="step-number">3</div>
                                 <div class="step-content">
-                                    <h5>Изучите результаты</h5>
-                                    <p>Используйте вкладки для просмотра различных категорий товаров: отсутствующие, избыточные, несоответствия, некорректные.</p>
+                                    <h5>Анализируйте результаты</h5>
+                                    <p>Нажмите кнопку "Анализировать" и изучите детальную информацию о расхождениях данных.</p>
                                 </div>
                             </div>
                         </div>
@@ -556,10 +615,11 @@
                         <div class="guide-features">
                             <h5>Основные возможности:</h5>
                             <ul class="features-list">
-                                <li><i class="fas fa-check-circle"></i> Быстрый анализ расхождений</li>
-                                <li><i class="fas fa-check-circle"></i> Фильтрация и сортировка результатов</li>
-                                <li><i class="fas fa-check-circle"></i> Удобное представление данных</li>
-                                <li><i class="fas fa-check-circle"></i> Настройка внешнего вида интерфейса</li>
+                                <li><i class="fas fa-check-circle"></i> Сверка данных из СБИС и кассовых систем</li>
+                                <li><i class="fas fa-check-circle"></i> Выявление отсутствующих и лишних позиций</li>
+                                <li><i class="fas fa-check-circle"></i> Анализ расхождений в количестве товаров</li>
+                                <li><i class="fas fa-check-circle"></i> Экспорт результатов в Excel</li>
+                                <li><i class="fas fa-check-circle"></i> Настраиваемый интерфейс с несколькими темами</li>
                             </ul>
                         </div>
                     </div>
@@ -568,114 +628,107 @@
                     <div class="guide-section" id="guide-files">
                         <h4>Работа с файлами</h4>
                         <p class="guide-description">
-                            Для корректного сравнения необходимо загрузить файлы Excel в определенном формате. Система адаптируется к различным структурам файлов, но для наилучших результатов рекомендуется следовать указанным рекомендациям.
+                            CrossCheck Pro поддерживает различные форматы файлов и способы ввода данных для максимального удобства и гибкости.
                         </p>
                         
-                        <h5>Требования к файлам</h5>
-                        <p>Для корректной работы системы необходимо загрузить два файла Excel (.xlsx или .xls):</p>
-                        
+                        <h5>Поддерживаемые форматы файлов</h5>
                         <div class="guide-file-types">
                             <div class="file-type">
                                 <i class="fas fa-file-excel"></i>
-                                <h6>Заказ МС</h6>
-                                <p>Содержит информацию о заказанных товарах с артикулами и количеством.</p>
+                                <h6>Excel (.xls, .xlsx)</h6>
+                                <p>Стандартные файлы Microsoft Excel и совместимые форматы.</p>
                             </div>
                             
                             <div class="file-type">
-                                <i class="fas fa-file-excel"></i>
-                                <h6>Сканирование СБИС</h6>
-                                <p>Содержит информацию о фактическом наличии товаров с артикулами и количеством.</p>
+                                <i class="fas fa-file-csv"></i>
+                                <h6>CSV (.csv)</h6>
+                                <p>Текстовые файлы с разделителями-запятыми для табличных данных.</p>
+                            </div>
+                            
+                            <div class="file-type">
+                                <i class="fas fa-file-alt"></i>
+                                <h6>Текстовые файлы (.txt)</h6>
+                                <p>Простые текстовые файлы с форматированными данными.</p>
                             </div>
                         </div>
                         
-                        <div class="guide-format">
-                            <h5>Рекомендуемый формат данных</h5>
-                            <div class="format-table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Колонка</th>
-                                            <th>Описание</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>Артикул/Код</td>
-                                            <td>Уникальный идентификатор товара</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Наименование</td>
-                                            <td>Название товара</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Количество</td>
-                                            <td>Количество единиц товара</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                        <h5>Способы загрузки</h5>
+                        <div class="upload-methods">
+                            <div class="upload-method">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <h6>Перетаскивание файлов</h6>
+                                <p>Просто перетащите файлы в область загрузки</p>
+                            </div>
+                            
+                            <div class="upload-method">
+                                <i class="fas fa-folder-open"></i>
+                                <h6>Выбор через диалог</h6>
+                                <p>Нажмите "Выбрать файлы" и укажите нужные файлы в диалоговом окне</p>
+                            </div>
+                            
+                            <div class="upload-method">
+                                <i class="fas fa-keyboard"></i>
+                                <h6>Ручной ввод (для режима КАССА)</h6>
+                                <p>Введите или вставьте данные в текстовое поле</p>
                             </div>
                         </div>
                         
                         <div class="guide-tips">
-                            <h5>Советы по загрузке файлов:</h5>
+                            <h5>Советы по работе с файлами:</h5>
                             <ul>
-                                <li>Убедитесь, что в файлах есть колонки с кодом товара и количеством</li>
-                                <li>Файлы должны быть в формате Excel (.xlsx или .xls)</li>
-                                <li>Для сброса выбранных файлов используйте кнопку "Сбросить"</li>
+                                <li>Убедитесь, что файлы содержат колонки с наименованием товара и количеством</li>
+                                <li>Для сброса загруженных данных используйте кнопку "Сбросить"</li>
+                                <li>В режиме КАССА можно одновременно загрузить файл и ввести данные вручную</li>
                             </ul>
                         </div>
                     </div>
                     
-                    <!-- Раздел: Сравнение -->
+                    <!-- Раздел: Режимы работы -->
                     <div class="guide-section" id="guide-comparison">
-                        <h4>Процесс сравнения</h4>
+                        <h4>Режимы работы</h4>
                         <p class="guide-description">
-                            Алгоритм сравнения автоматически анализирует структуру загруженных файлов, выделяет ключевые данные и сопоставляет их для выявления несоответствий. Процесс оптимизирован для быстрой работы даже с большими объемами данных.
+                            CrossCheck Pro поддерживает два основных режима работы, каждый из которых оптимизирован для определенных типов данных и задач.
                         </p>
                         
-                        <h5>Как работает сравнение</h5>
-                        <p>Система автоматически определяет структуру загруженных файлов и сравнивает товары по их уникальным кодам.</p>
-                        
-                        <div class="comparison-info">
-                            <div class="comparison-step">
-                                <div class="step-icon"><i class="fas fa-file-import"></i></div>
-                                <div class="step-info">
-                                    <h6>Анализ файлов</h6>
-                                    <p>Определение структуры данных и извлечение информации о товарах</p>
+                        <div class="modes-container">
+                            <div class="mode-info">
+                                <div class="mode-icon"><i class="fas fa-store"></i></div>
+                                <div class="mode-details">
+                                    <h5>Режим СБИС</h5>
+                                    <p>Режим для работы с данными из системы СБИС. Используйте этот режим, когда необходимо выполнить проверку данных из СБИС.</p>
+                                    <h6>Особенности:</h6>
+                                    <ul>
+                                        <li>Поддержка стандартного формата выгрузки СБИС</li>
+                                        <li>Автоматическое определение структуры данных</li>
+                                        <li>Детальный анализ всех товарных позиций</li>
+                                    </ul>
                                 </div>
                             </div>
                             
-                            <div class="comparison-step">
-                                <div class="step-icon"><i class="fas fa-random"></i></div>
-                                <div class="step-info">
-                                    <h6>Сопоставление</h6>
-                                    <p>Поиск соответствий между товарами из двух файлов по артикулу</p>
-                                </div>
-                            </div>
-                            
-                            <div class="comparison-step">
-                                <div class="step-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                                <div class="step-info">
-                                    <h6>Выявление расхождений</h6>
-                                    <p>Определение отсутствующих, избыточных, несоответствующих по количеству и некорректных товаров</p>
-                                </div>
-                            </div>
-                            
-                            <div class="comparison-step">
-                                <div class="step-icon"><i class="fas fa-table"></i></div>
-                                <div class="step-info">
-                                    <h6>Формирование результатов</h6>
-                                    <p>Группировка и отображение данных по категориям</p>
+                            <div class="mode-info">
+                                <div class="mode-icon"><i class="fas fa-cash-register"></i></div>
+                                <div class="mode-details">
+                                    <h5>Режим КАССА</h5>
+                                    <p>Режим для работы с данными из кассовых систем. Этот режим предоставляет дополнительные возможности ввода данных.</p>
+                                    <h6>Особенности:</h6>
+                                    <ul>
+                                        <li>Возможность ввода данных через текстовое поле</li>
+                                        <li>Поддержка различных форматов кассовых документов</li>
+                                        <li>Гибкие возможности сопоставления товаров</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
+                        
+                        <h5>Переключение между режимами</h5>
+                        <p>Для переключения между режимами используйте соответствующие кнопки в верхней части секции загрузки файлов. При переключении режима все данные автоматически сбрасываются.</p>
                     </div>
                     
                     <!-- Раздел: Работа с результатами -->
                     <div class="guide-section" id="guide-results">
                         <h4>Работа с результатами</h4>
                         <p class="guide-description">
-                            После сравнения система предоставляет детальный отчет в виде таблиц с возможностью сортировки, фильтрации и поиска. Результаты разделены на категории для удобного анализа найденных расхождений.
+                            После анализа данных CrossCheck Pro предоставляет детальную информацию о расхождениях, разделенную на категории для удобного использования.
                         </p>
                         
                         <h5>Категории результатов</h5>
@@ -684,107 +737,67 @@
                                 <div class="category-icon"><i class="fas fa-list"></i></div>
                                 <div class="category-details">
                                     <h6>Все товары</h6>
-                                    <p>Полный список всех товаров из обоих файлов с их статусом</p>
+                                    <p>Полный список всех проанализированных товаров</p>
                                 </div>
                             </div>
                             
                             <div class="category-item">
-                                <div class="category-icon"><i class="fas fa-barcode"></i></div>
-                                <div class="category-details">
-                                    <h6>Товары в СБИС</h6>
-                                    <p>Все товары, которые есть в файле сканирования СБИС</p>
-                                </div>
-                            </div>
-                            
-                            <div class="category-item">
-                                <div class="category-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                                <div class="category-details">
-                                    <h6>Ошибки</h6>
-                                    <p>Сводка всех проблемных товаров с указанием типа проблемы</p>
-                                </div>
-                            </div>
-                            
-                            <div class="category-item">
-                                <div class="category-icon missing-icon"><i class="fas fa-times-circle"></i></div>
+                                <div class="category-icon"><i class="fas fa-times-circle"></i></div>
                                 <div class="category-details">
                                     <h6>Отсутствующие</h6>
-                                    <p>Товары из заказа, которых нет в файле СБИС</p>
+                                    <p>Товары, которые есть в СБИС, но отсутствуют в кассе</p>
                                 </div>
                             </div>
                             
                             <div class="category-item">
-                                <div class="category-icon extra-icon"><i class="fas fa-plus-circle"></i></div>
+                                <div class="category-icon"><i class="fas fa-plus-circle"></i></div>
                                 <div class="category-details">
-                                    <h6>Избыточные</h6>
-                                    <p>Товары из файла СБИС, которых нет в заказе</p>
+                                    <h6>Лишние</h6>
+                                    <p>Товары, которые есть в кассе, но отсутствуют в СБИС</p>
                                 </div>
                             </div>
                             
                             <div class="category-item">
-                                <div class="category-icon mismatch-icon"><i class="fas fa-exchange-alt"></i></div>
+                                <div class="category-icon"><i class="fas fa-exchange-alt"></i></div>
                                 <div class="category-details">
                                     <h6>Несоответствия</h6>
-                                    <p>Товары с расхождением в количестве между заказом и СБИС</p>
-                                </div>
-                            </div>
-
-                            <div class="category-item">
-                                <div class="category-icon" style="background-color: rgba(147, 51, 234, 0.1); color: #9333ea;">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                </div>
-                                <div class="category-details">
-                                    <h6>Некорректные</h6>
-                                    <p>Товары без штрих-кода или с отсутствующим количеством в СБИС. Выделены фиолетовой границей для быстрой идентификации.</p>
+                                    <p>Товары с расхождениями в количестве между СБИС и кассой</p>
                                 </div>
                             </div>
                             
                             <div class="category-item">
-                                <div class="category-icon" style="background-color: rgba(0, 150, 136, 0.1); color: #009688;">
-                                    <i class="fas fa-check-square"></i>
-                                </div>
+                                <div class="category-icon"><i class="fas fa-exclamation-circle"></i></div>
                                 <div class="category-details">
-                                    <h6>Отмеченные</h6>
-                                    <p>Товары, отмеченные вами как проверенные. Позволяет отслеживать прогресс проверки и возвращаться к отмеченным позициям позже.</p>
+                                    <h6>Немаркированные</h6>
+                                    <p>Товары без маркировки (без обозначения "м" или "(м)")</p>
                                 </div>
                             </div>
                         </div>
                         
                         <h5>Функции работы с результатами</h5>
-                        <div class="results-functions">
-                            <div class="function-item">
+                        <div class="results-features">
+                            <div class="feature-item">
                                 <i class="fas fa-search"></i>
-                                <h6>Поиск</h6>
-                                <p>Используйте поле поиска для фильтрации товаров по артикулу или наименованию</p>
+                                <h6>Поиск и фильтрация</h6>
+                                <p>Используйте поле поиска для быстрой фильтрации результатов</p>
                             </div>
                             
-                            <div class="function-item">
+                            <div class="feature-item">
                                 <i class="fas fa-sort"></i>
                                 <h6>Сортировка</h6>
-                                <p>Сортируйте товары по любому столбцу, нажав на заголовок таблицы</p>
+                                <p>Нажмите на заголовок колонки для сортировки данных</p>
                             </div>
                             
-                            <div class="function-item">
-                                <i class="fas fa-clipboard-check"></i>
-                                <h6>Отметка о проверке</h6>
-                                <p>Используйте чекбоксы в первой колонке для отметки проверенных позиций</p>
-                            </div>
-
-                            <div class="function-item">
-                                <i class="fas fa-times-circle"></i>
-                                <h6>Сброс отметок</h6>
-                                <p>Нажмите кнопку "Сбросить" для мгновенного сброса всех отметок о проверке</p>
+                            <div class="feature-item">
+                                <i class="fas fa-check-square"></i>
+                                <h6>Отметка обработанных</h6>
+                                <p>Используйте чекбоксы для отметки проверенных позиций</p>
                             </div>
                             
-                            <div class="function-item">
-                                <i class="fas fa-tag"></i>
-                                <h6>Фильтр маркировки</h6>
-                                <p>Используйте кнопку "Без марки" для скрытия/отображения товаров без маркировки</p>
-                            </div>
-                            
-                            <div class="function-item">
-                                <i class="fas fa-file-excel"></i>
-                                <h6>Экспорт в Excel</h6>
-                                <p>Нажмите кнопку "Экспорт" для сохранения текущих результатов сравнения в Excel-файл с сохранением форматирования и цветовой индикации</p>
+                            <div class="feature-item">
+                                <i class="fas fa-file-export"></i>
+                                <h6>Экспорт</h6>
+                                <p>Выгрузите результаты в Excel для дальнейшей обработки</p>
                             </div>
                         </div>
                     </div>
@@ -792,6 +805,9 @@
                     <!-- Раздел: Полезные советы -->
                     <div class="guide-section" id="guide-tips">
                         <h4>Полезные советы</h4>
+                        <p class="guide-description">
+                            Здесь собраны рекомендации и советы, которые помогут вам эффективнее использовать возможности CrossCheck Pro.
+                        </p>
                         
                         <div class="tips-container">
                             <div class="tip-card">
@@ -953,65 +969,20 @@
             <div class="modal-body changelog-body">
                 <div class="changelog-entry">
                     <div class="version-header">
-                        <h4>Версия 1.1.1</h4>
-                        <span class="version-date">15.04.2025</span>
-                    </div>
-                    <ul class="changelog-list">
-                        <li><span class="fix-tag">Исправлено</span> Устранена проблема с "бесконечной загрузкой" при проверке обновлений</li>
-                        <li><span class="improvement-tag">Улучшение</span> Добавлен таймаут для операции проверки обновлений</li>
-                        <li><span class="improvement-tag">Улучшение</span> Улучшена обработка ошибок при отсутствии обновлений</li>
-                    </ul>
-                </div>
-                
-                <div class="changelog-entry">
-                    <div class="version-header">
-                        <h4>Версия 1.1.0</h4>
-                        <span class="version-date">10.04.2025</span>
-                    </div>
-                    <ul class="changelog-list">
-                        <li><span class="feature-tag">Новое</span> Добавлена система автоматического обновления приложения</li>
-                        <li><span class="feature-tag">Новое</span> Добавлена кнопка проверки обновлений в интерфейсе</li>
-                        <li><span class="feature-tag">Новое</span> Реализован улучшенный просмотр ченджлога</li>
-                        <li><span class="improvement-tag">Улучшение</span> Оптимизирована структура проекта для стабильной сборки</li>
-                        <li><span class="fix-tag">Исправлено</span> Решены проблемы с запуском в режиме разработки</li>
-                    </ul>
-                </div>
-                
-                <div class="changelog-entry">
-                    <div class="version-header">
-                        <h4>Версия 1.0.2</h4>
-                        <span class="version-date">15.07.2023</span>
-                    </div>
-                    <ul class="changelog-list">
-                        <li><span class="feature-tag">Новое</span> Добавлена вкладка "Отмеченные" для отслеживания проверенных товаров</li>
-                        <li><span class="feature-tag">Новое</span> Добавлена кнопка "История изменений" в настройках</li>
-                        <li><span class="improvement-tag">Улучшение</span> Оптимизирована работа с большими списками товаров</li>
-                        <li><span class="fix-tag">Исправлено</span> Исправлено обновление таблиц при отметке товаров</li>
-                    </ul>
-                </div>
-                
-                <div class="changelog-entry">
-                    <div class="version-header">
-                        <h4>Версия 1.0.1</h4>
-                        <span class="version-date">01.06.2023</span>
-                    </div>
-                    <ul class="changelog-list">
-                        <li><span class="feature-tag">Новое</span> Добавлена цветовая индикация в экспорте Excel</li>
-                        <li><span class="improvement-tag">Улучшение</span> Добавлена сортировка по наименованию в Excel</li>
-                        <li><span class="fix-tag">Исправлено</span> Устранены мелкие ошибки интерфейса</li>
-                    </ul>
-                </div>
-                
-                <div class="changelog-entry">
-                    <div class="version-header">
                         <h4>Версия 1.0.0</h4>
-                        <span class="version-date">15.05.2023</span>
+                        <span class="version-date">28.04.2025</span>
                     </div>
                     <ul class="changelog-list">
-                        <li><span class="feature-tag">Новое</span> Первый релиз приложения</li>
-                        <li><span class="feature-tag">Новое</span> Базовый функционал сравнения заказов</li>
-                        <li><span class="feature-tag">Новое</span> Интерфейс с вкладками для категорий товаров</li>
-                        <li><span class="feature-tag">Новое</span> Возможность отмечать проверенные товары</li>
+                        <li><span class="feature-tag">Новое</span> Два режима работы: СБИС и КАССА</li>
+                        <li><span class="feature-tag">Новое</span> Загрузка и анализ файлов в формате Excel</li>
+                        <li><span class="feature-tag">Новое</span> Выявление отсутствующих товаров</li>
+                        <li><span class="feature-tag">Новое</span> Обнаружение лишних товаров</li>
+                        <li><span class="feature-tag">Новое</span> Идентификация несоответствий количества</li>
+                        <li><span class="feature-tag">Новое</span> Отметки о проверке товаров</li>
+                        <li><span class="feature-tag">Новое</span> Экспорт результатов в Excel</li>
+                        <li><span class="feature-tag">Новое</span> Фильтрация и сортировка результатов</li>
+                        <li><span class="feature-tag">Новое</span> Подробная статистика по категориям товаров</li>
+                        <li><span class="feature-tag">Новое</span> Расширенные настройки интерфейса с несколькими темами</li>
                     </ul>
                 </div>
             </div>

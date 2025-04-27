@@ -1,7 +1,7 @@
 {
   "name": "crosscheck-sbis",
   "productName": "CrossCheck SBIS",
-  "version": "1.1.6",
+  "version": "1.0.0",
   "description": "Система сравнения заказов МС и СБИС",
   "main": "main.js",
   "scripts": {
