@@ -1,6 +1,6 @@
 # CrossCheck PRO
 
-[![Version](https://img.shields.io/badge/версия-1.0.0-blue.svg)](https://github.com/Fr1z1ck/CrossCheck-PRO/releases)
+[![Version](https://img.shields.io/badge/версия-1.0.1-blue.svg)](https://github.com/Fr1z1ck/CrossCheck-PRO/releases)
 [![License](https://img.shields.io/badge/лицензия-MIT-green.svg)](LICENSE)
 
 ## 📋 Описание
@@ -63,4 +63,4 @@ CrossCheck PRO распространяется под лицензией MIT. �
 
 ## 👨‍💻 Разработчик
 
-© 2025 [@Fr1z1ck](https://t.me/Fr1z1ck). Все права защищены. 
+© 2025 [@Fr1z1ck](https://t.me/Fr1z1ck) | [GitHub](https://github.com/Fr1z1ck). Все права защищены. 
