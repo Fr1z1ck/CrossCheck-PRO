@@ -1,6 +1,5 @@
 # CrossCheck SBIS
 
-![CrossCheck Logo](https://img.shields.io/badge/CrossCheck-SBIS-blue.svg)
 [![Version](https://img.shields.io/badge/версия-1.0.0-blue.svg)](https://github.com/Fr1z1ck/crosscheck-sbis/releases)
 [![License](https://img.shields.io/badge/лицензия-MIT-green.svg)](LICENSE)
 
