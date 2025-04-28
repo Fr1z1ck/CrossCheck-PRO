@@ -122,24 +122,45 @@ function setupEventListeners() {
         
         kassaModeBtn.addEventListener('click', () => {
             if (currentMode !== 'kassa') {
+                // Переключаем режим
                 currentMode = 'kassa';
-                document.getElementById('kassaModeBtn').classList.add('active');
-                document.getElementById('sbisModeBtn').classList.remove('active');
+                kassaModeBtn.classList.add('active');
+                sbisModeBtn.classList.remove('active');
                 
-                // Показываем поле для текста кассы
-                const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
+                // Показываем поле для текста
                 if (kassaTextInputContainer) {
                     kassaTextInputContainer.style.display = 'block';
                 }
                 
-                // Обновляем заголовок вкладки со сканированием
-                updateScanTabLabel('КАССЕ');
+                // Обновляем текст и настройки для режима КАССА
+                if (fileLabel) {
+                    fileLabel.textContent = 'Выберите файл Excel заказа МС';
+                }
                 
-                // Сбрасываем все данные при переключении режимов
+                if (fileHint) {
+                    fileHint.innerHTML = 'Перетащите файл в эту область или нажмите кнопку ниже для выбора через диалог<br><small>(только заказ МС)</small><br><small class="file-format-hint">Поддерживаемые форматы: Excel (.xls, .xlsx)</small>';
+                }
+                
+                // Отображаем шаги для режима КАССА
+                const fileSteps = document.querySelector('.file-steps');
+                if (fileSteps) {
+                    fileSteps.style.display = 'flex';
+                }
+                
+                // Обновляем настройки для выбора одного файла
+                fileInput.removeAttribute('multiple');
+                
+                // Сбрасываем данные
                 resetFiles();
                 
-                // Настраиваем интерфейс режима КАССА
-                setupKassaMode();
+                // Очищаем поле текста кассы
+                const kassaTextInput = document.getElementById('kassaTextInput');
+                if (kassaTextInput) {
+                    kassaTextInput.value = '';
+                }
+                
+                // Обновляем заголовок вкладки со сканированием
+                updateScanTabLabel('КАССЕ');
             }
         });
         
@@ -3510,101 +3531,238 @@ function extractProductsFromKassaText(text) {
     const productMap = new Map();
     const lines = text.split('\n');
     
-    // Регулярное выражение для извлечения информации из строк кассы
-    // Ищем строки вида "номерНазвание товара (возможно с примечаниями)"
-    const productRegex = /^\d+([A-Za-z\s\-]+)\s*-\s*([^(]+)(?:\(([^)]+)\))?/;
+    // Регулярные выражения для различных форматов
+    const formats = [
+        // Формат: номер название цена x количество
+        /^\d+\s+([A-Za-zА-Яа-я\s\-\(\)]+?)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        // Формат: название цена x количество
+        /^([A-Za-zА-Яа-я\s\-\(\)]+?)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        // Формат: номер название (примечание) цена x количество
+        /^\d+\s+([A-Za-zА-Яа-я\s\-]+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        // Формат: название (примечание) цена x количество
+        /^([A-Za-zА-Яа-я\s\-]+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/
+    ];
     
+    // Список служебных строк для пропуска
+    const skipPatterns = [
+        'Продажа', 'Найти', 'ХР', 'Скидка', 'Клиент', 'Наличные', 'К оплате',
+        'Итого', 'Сумма', 'Чек', 'Кассир', 'Дата', 'Время', 'Сдача', 'шт'
+    ];
+    
+    // Проходим по строкам и обрабатываем их
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         
-        // Пропускаем пустые строки и заголовки
-        if (!line || line.includes('Продажа') || line.includes('Найти') || 
-            line.includes('ХР') || line.includes('Скидка') || line.includes('Клиент') || 
-            line.includes('Наличные') || line.includes('К оплате')) {
+        // Пропускаем пустые строки и служебные строки
+        if (!line || skipPatterns.some(pattern => line.includes(pattern))) {
             continue;
         }
         
-        // Сначала ищем строки, содержащие известные бренды
-        let productName = "";
-        const knownBrands = ['Musthave', 'Dark Side Core', 'Sebero Black'];
-        let foundBrand = false;
+        let productName = '';
+        let quantity = 1;
+        let price = 0;
+        let note = '';
         
-        for (const brand of knownBrands) {
-            if (line.includes(brand)) {
-                // Находим позицию бренда и вырезаем всё после него до конца строки или до цены
-                const brandPos = line.indexOf(brand);
-                const pricePos = line.indexOf('x1') > -1 ? line.indexOf('x1') : line.length;
-                
-                productName = line.substring(brandPos, pricePos).trim();
-                foundBrand = true;
+        // Пытаемся распознать по основным форматам
+        let matched = false;
+        for (const format of formats) {
+            const match = line.match(format);
+            if (match) {
+                matched = true;
+                // Извлекаем данные в зависимости от формата
+                if (match.length === 4) {
+                    // Форматы без примечания
+                    productName = match[1].trim();
+                    price = parseFloat(match[2]);
+                    quantity = parseInt(match[3]);
+                } else if (match.length === 5) {
+                    // Форматы с примечанием
+                    productName = match[1].trim();
+                    note = ` (${match[2].trim()})`;
+                    price = parseFloat(match[3]);
+                    quantity = parseInt(match[4]);
+                }
                 break;
             }
         }
         
-        // Если не нашли известный бренд, проверяем через регулярное выражение
-        if (!foundBrand) {
-            const match = line.match(productRegex);
-            if (match) {
-                let brand = match[1] ? match[1].trim() : '';
-                let name = match[2] ? match[2].trim() : '';
-                let note = match[3] ? ` (${match[3].trim()})` : '';
+        // Если не удалось распознать по основным форматам,
+        // проверяем формат типа "название" + "цена" + "x" + "количество" на отдельных строках
+        if (!matched) {
+            // Проверяем, начинается ли строка с известных брендов или является названием товара
+            if (line.match(/^[A-Za-zА-Яа-я]/) && (line.includes(' - ') || line.includes('('))) {
+                productName = line.trim();
                 
-                if (brand && name) {
-                    productName = `${brand} - ${name}${note}`;
+                // Проверяем следующие строки на наличие цены и количества
+                let j = i + 1;
+                let priceFound = false;
+                let quantityFound = false;
+                
+                // Ищем до 5 строк вперед для поиска цены и количества
+                while (j < Math.min(i + 6, lines.length) && (!priceFound || !quantityFound)) {
+                    const nextLine = lines[j].trim();
+                    
+                    // Пропускаем пустые строки
+                    if (!nextLine) {
+                        j++;
+                        continue;
+                    }
+                    
+                    // Проверяем, является ли строка ценой
+                    if (!priceFound && /^\d+[\s\.]?\d*$/.test(nextLine)) {
+                        price = parseFloat(nextLine.replace(/\s/g, ''));
+                        priceFound = true;
+                        j++;
+                        continue;
+                    }
+                    
+                    // Проверяем, является ли строка символом "x"
+                    if (priceFound && nextLine === 'x') {
+                        j++;
+                        continue;
+                    }
+                    
+                    // Проверяем, является ли строка количеством
+                    if (priceFound && !quantityFound && /^\d+$/.test(nextLine)) {
+                        quantity = parseInt(nextLine);
+                        quantityFound = true;
+                        i = j; // Перемещаем указатель основного цикла
+                        break;
+                    }
+                    
+                    // Если строка не соответствует ожидаемому формату, двигаемся дальше
+                    j++;
+                }
+                
+                matched = priceFound && quantityFound;
+            }
+        }
+        
+        // Если не удалось распознать по основным форматам, 
+        // пробуем извлечь название до метки количества
+        if (!matched && line.includes('x')) {
+            const parts = line.split('x');
+            if (parts.length >= 2) {
+                // Ищем цену и название в первой части
+                const firstPart = parts[0].trim();
+                const priceMatch = firstPart.match(/(\d+[\s\.]\d*|\d+)$/);
+                if (priceMatch) {
+                    price = parseFloat(priceMatch[1].replace(/\s/g, ''));
+                    productName = firstPart.substring(0, firstPart.length - priceMatch[1].length).trim();
+                    // Удаляем начальные цифры и пробелы, если они есть
+                    productName = productName.replace(/^\d+\s*/, '');
+                    
+                    // Извлекаем количество из второй части
+                    const quantityMatch = parts[1].match(/\d+/);
+                    if (quantityMatch) {
+                        quantity = parseInt(quantityMatch[0]);
+                        matched = true;
+                    }
                 }
             }
         }
         
-        // Если всё равно не смогли извлечь название, попробуем взять просто начало строки до цены
-        if (!productName && /^\d+/.test(line)) {
-            const nameStart = line.search(/[A-Za-z]/);
-            const pricePos = line.indexOf('x1') > -1 ? line.indexOf('x1') : line.length;
+        // Если всё равно не удалось извлечь название, пробуем взять начало строки до цены
+        if (!matched && !productName && /^\d+/.test(line)) {
+            const nameStart = line.search(/[A-Za-zА-Яа-я]/);
+            const pricePos = line.indexOf('x') > -1 ? line.indexOf('x') : line.length;
             
             if (nameStart > -1 && nameStart < pricePos) {
                 productName = line.substring(nameStart, pricePos).trim();
+                matched = true;
             }
         }
         
         // Если получили название товара, добавляем или обновляем его в Map
         if (productName) {
+            // Добавляем примечание к названию, если есть
+            if (note) {
+                productName += note;
+            }
+            
+            // Очищаем название от лишних пробелов и символов
+            productName = productName.replace(/\s+/g, ' ').trim();
+            
+            console.log(`Извлечен товар: "${productName}" (${quantity} шт. по ${price} руб.)`);
+            
             // Проверяем, есть ли уже такой товар в Map
             if (productMap.has(productName)) {
-                // Если товар уже есть, увеличиваем его количество на 1
+                // Если товар уже есть, увеличиваем его количество
                 const product = productMap.get(productName);
-                product.quantity += 1;
+                product.quantity += quantity;
             } else {
                 // Если товара еще нет, создаем новую запись
                 const product = {
                     code: '', // Нет артикула в режиме КАССА
                     name: productName,
-                    originalName: productName, // Сохраняем оригинальное название для отображения
-                    quantity: 1, // Начальное количество
+                    originalName: productName,
+                    quantity: quantity,
+                    price: price,
                     barcode: '' // Нет штрих-кода в режиме КАССА
                 };
                 productMap.set(productName, product);
             }
-        } else if (/\d+\.\d+x\d+/.test(line)) {
-            // Пропускаем строки с ценами (формат: цена x количество)
-            continue;
         }
     }
     
     // Преобразуем Map в массив товаров
     const products = Array.from(productMap.values());
     
-    console.log(`Извлечено ${products.length} уникальных товаров из текста кассы (с учетом количества)`);
+    console.log(`Извлечено ${products.length} уникальных товаров из текста кассы`);
     
     // Выводим информацию о товарах с количеством больше 1
     const multipleItems = products.filter(p => p.quantity > 1);
     if (multipleItems.length > 0) {
         console.log(`Товары с количеством > 1 (${multipleItems.length} шт.):`);
         multipleItems.forEach(p => {
-            console.log(`- ${p.name}: ${p.quantity} шт.`);
+            console.log(`- ${p.name}: ${p.quantity} шт. (${p.price} руб. за шт.)`);
         });
     }
     
     return products;
 }
+
+// Переключение режимов СБИС и КАССА
+document.getElementById('sbisModeBtn').addEventListener('click', function() {
+    if (currentMode !== 'sbis') {
+        currentMode = 'sbis';
+        document.getElementById('sbisModeBtn').classList.add('active');
+        document.getElementById('kassaModeBtn').classList.remove('active');
+        
+        // Скрываем поле для текста кассы
+        const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
+        if (kassaTextInputContainer) {
+            kassaTextInputContainer.style.display = 'none';
+        }
+        
+        // Обновляем заголовок вкладки со сканированием
+        updateScanTabLabel('СБИС');
+        
+        // Сбрасываем все данные при переключении режимов
+        resetFiles();
+    }
+});
+
+document.getElementById('kassaModeBtn').addEventListener('click', function() {
+    if (currentMode !== 'kassa') {
+        currentMode = 'kassa';
+        document.getElementById('kassaModeBtn').classList.add('active');
+        document.getElementById('sbisModeBtn').classList.remove('active');
+        
+        // Показываем поле для текста кассы
+        const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
+        if (kassaTextInputContainer) {
+            kassaTextInputContainer.style.display = 'block';
+        }
+        
+        // Обновляем заголовок вкладки со сканированием
+        updateScanTabLabel('КАССЕ');
+        
+        // Сбрасываем все данные при переключении режимов
+        resetFiles();
+    }
+});    // Известные бренды для улучшенного распознавания
+    const knownBrands = ['Musthave', 'Dark Side Core', 'Sebero Black'];
 
 // Функция для сравнения товаров в режиме КАССА
 function compareProductsByName(orderProducts, kassaProducts) {
@@ -3619,14 +3777,13 @@ function compareProductsByName(orderProducts, kassaProducts) {
         extra: [],
         quantityMismatch: [],
         incomplete: [],
-        // Добавляем недостающие массивы для функции displayResults
         all: [],
         scan: [],
         mismatch: [],
         errors: []
     };
     
-    // Функция для нормализации названия товара (удаление лишних символов, перевод в нижний регистр)
+    // Функция для нормализации названия товара
     const normalizeProductName = (name) => {
         return name.toLowerCase()
             .replace(/\s+/g, ' ')
@@ -3634,7 +3791,7 @@ function compareProductsByName(orderProducts, kassaProducts) {
             .trim();
     };
     
-    // Функция для вычисления схожести строк (используем простую метрику)
+    // Функция для вычисления схожести строк
     const calculateSimilarity = (str1, str2) => {
         const str1Normalized = normalizeProductName(str1);
         const str2Normalized = normalizeProductName(str2);
@@ -3704,7 +3861,7 @@ function compareProductsByName(orderProducts, kassaProducts) {
             const matchedItem = {
                 code: orderProduct.code,
                 name: orderProduct.name,
-                kassaName: bestMatch.originalName || bestMatch.name, // Используем оригинальное название, если оно есть
+                kassaName: bestMatch.originalName || bestMatch.name,
                 orderQuantity: orderProduct.quantity,
                 scanQuantity: bestMatch.quantity,
                 similarity: bestSimilarity,
@@ -3717,13 +3874,12 @@ function compareProductsByName(orderProducts, kassaProducts) {
                 matchedItem.difference = bestMatch.quantity - orderProduct.quantity;
                 results.quantityMismatch.push(matchedItem);
                 results.mismatch.push(matchedItem);
-                results.errors.push(matchedItem); // Добавляем в список ошибок
+                results.errors.push(matchedItem);
             } else {
                 matchedItem.status = 'ok';
                 results.matched.push(matchedItem);
             }
             
-            // Добавляем в общий список
             results.all.push(matchedItem);
             
             // Удаляем найденный товар из списка оставшихся
@@ -3747,7 +3903,7 @@ function compareProductsByName(orderProducts, kassaProducts) {
     for (const kassaProduct of remainingKassaProducts) {
         const extraItem = {
             code: '',
-            name: kassaProduct.originalName || kassaProduct.name, // Используем оригинальное название, если оно есть
+            name: kassaProduct.originalName || kassaProduct.name,
             orderQuantity: 0,
             scanQuantity: kassaProduct.quantity,
             status: 'extra'
@@ -3755,378 +3911,56 @@ function compareProductsByName(orderProducts, kassaProducts) {
         results.extra.push(extraItem);
         results.all.push(extraItem);
         results.errors.push(extraItem);
-    }
-    
-    // Добавляем товары кассы в список scan
-    for (const kassaProduct of kassaProducts) {
-        // Пытаемся найти соответствие в массиве quantityMismatch
-        const mismatchItem = results.quantityMismatch.find(item => 
-            (item.kassaName === kassaProduct.originalName || item.kassaName === kassaProduct.name));
         
-        if (mismatchItem) {
-            // Это товар с несоответствием количества
-            const scanItem = {
-                code: mismatchItem.code,
+        // Добавляем в список scan
+        results.scan.push({
+            code: '',
+            name: kassaProduct.originalName || kassaProduct.name,
+            scanQuantity: kassaProduct.quantity,
+            status: 'extra'
+        });
+    }
+    
+    // Добавляем все товары из кассы в список scan
+    for (const kassaProduct of kassaProducts) {
+        // Пропускаем товары, которые уже добавлены как избыточные
+        if (remainingKassaProducts.includes(kassaProduct)) {
+            continue;
+        }
+        
+        // Ищем соответствующий товар в результатах
+        const matchedItem = results.all.find(item => 
+            item.kassaName === (kassaProduct.originalName || kassaProduct.name)
+        );
+        
+        if (matchedItem) {
+            results.scan.push({
+                code: matchedItem.code,
                 name: kassaProduct.originalName || kassaProduct.name,
-                orderQuantity: mismatchItem.orderQuantity,
+                orderQuantity: matchedItem.orderQuantity,
                 scanQuantity: kassaProduct.quantity,
-                status: 'mismatch'
-            };
-            results.scan.push(scanItem);
-        } else {
-            // Проверяем, есть ли этот товар в списке matched
-            const matchedItem = results.matched.find(item => 
-                (item.kassaName === kassaProduct.originalName || item.kassaName === kassaProduct.name));
-            
-            if (matchedItem) {
-                // Это товар с соответствующим количеством
-                const scanItem = {
-                    code: matchedItem.code,
-                    name: kassaProduct.originalName || kassaProduct.name,
-                    orderQuantity: matchedItem.orderQuantity,
-                    scanQuantity: kassaProduct.quantity,
-                    status: 'ok'
-                };
-                results.scan.push(scanItem);
-            } else {
-                // Это избыточный товар
-                const scanItem = {
-                    code: '',
-                    name: kassaProduct.originalName || kassaProduct.name,
-                    orderQuantity: 0,
-                    scanQuantity: kassaProduct.quantity,
-                    status: 'extra'
-                };
-                results.scan.push(scanItem);
-            }
+                status: matchedItem.status
+            });
         }
     }
     
-    // Обновляем счетчики
-    results.matchedCount = results.matched.length;
-    results.missingCount = results.missing.length;
-    results.extraCount = results.extra.length;
-    results.quantityMismatchCount = results.quantityMismatch.length;
-    results.incompleteCount = results.incomplete.length;
+    // Сортируем все массивы по имени товара
+    const sortByName = (a, b) => a.name.localeCompare(b.name);
+    results.missing.sort(sortByName);
+    results.extra.sort(sortByName);
+    results.mismatch.sort(sortByName);
+    results.matched.sort(sortByName);
+    results.all.sort(sortByName);
+    results.scan.sort(sortByName);
+    results.errors.sort(sortByName);
     
-    // Добавляем некорректные товары в список ошибок
-    results.incomplete.forEach(item => {
-        if (!results.errors.includes(item)) {
-            results.errors.push(item);
-        }
-    });
-    
-    console.log('Сравнение товаров завершено');
-    console.log(`Совпадений: ${results.matchedCount}, Отсутствующих: ${results.missingCount}, `
-              + `Избыточных: ${results.extraCount}, Несоответствий количества: ${results.quantityMismatchCount}`);
+    console.log(`Результаты сравнения:
+        Всего товаров: ${results.all.length}
+        Отсутствуют в кассе: ${results.missing.length}
+        Лишние в кассе: ${results.extra.length}
+        Несоответствие количества: ${results.mismatch.length}
+        Совпадающие товары: ${results.matched.length}
+        Всего ошибок: ${results.errors.length}`);
     
     return results;
 }
-
-// Переключение режимов СБИС и КАССА
-document.getElementById('sbisModeBtn').addEventListener('click', function() {
-    if (currentMode !== 'sbis') {
-        currentMode = 'sbis';
-        document.getElementById('sbisModeBtn').classList.add('active');
-        document.getElementById('kassaModeBtn').classList.remove('active');
-        
-        // Скрываем поле для текста кассы
-        const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
-        if (kassaTextInputContainer) {
-            kassaTextInputContainer.style.display = 'none';
-        }
-        
-        // Обновляем заголовок вкладки со сканированием
-        updateScanTabLabel('СБИС');
-        
-        // Сбрасываем все данные при переключении режимов
-        resetFiles();
-    }
-});
-
-document.getElementById('kassaModeBtn').addEventListener('click', function() {
-    if (currentMode !== 'kassa') {
-        currentMode = 'kassa';
-        document.getElementById('kassaModeBtn').classList.add('active');
-        document.getElementById('sbisModeBtn').classList.remove('active');
-        
-        // Показываем поле для текста кассы
-        const kassaTextInputContainer = document.getElementById('kassaTextInputContainer');
-        if (kassaTextInputContainer) {
-            kassaTextInputContainer.style.display = 'block';
-        }
-        
-        // Обновляем заголовок вкладки со сканированием
-        updateScanTabLabel('КАССЕ');
-        
-        // Сбрасываем все данные при переключении режимов
-        resetFiles();
-        
-        // Настраиваем интерфейс режима КАССА
-        setupKassaMode();
-    }
-});
-
-/**
- * Функция для парсинга кассового чека - извлекает наименования товаров и их количество
- * @param {string} receiptText - текст кассового чека
- * @returns {Array} массив объектов с наименованиями товаров и их количеством
- */
-function parseReceipt(receiptText) {
-  console.log('Начало парсинга кассового чека');
-  
-  // Разбиваем текст на строки и удаляем пустые строки
-  const lines = receiptText.split('\n').map(line => line.trim()).filter(line => line);
-  
-  // Объект для хранения товаров и их количества
-  const products = {};
-  
-  // Массив шаблонов для распознавания строк с наименованиями товаров
-  const productPatterns = [
-    // Полный формат: номер, бренд, название в скобках, вес
-    /^(?:\d+)?([A-Za-zА-Яа-я][-A-Za-zА-Яа-я\s]+ - [^,]+ \([^)]+\), \d+ [а-я]+)(?:\s*\([мa-zA-Zа-яА-Я]\))?/,
-    
-    // Формат без веса: бренд - название (перевод)
-    /^(?:\d+)?([A-Za-zА-Яа-я][-A-Za-zА-Яа-я\s]+ - [^,()]+ \([^)]+\))(?:\s*\([мa-zA-Zа-яА-Я]\))?/,
-    
-    // Формат без номера: бренд - название, вес
-    /^([A-Za-zА-Яа-я][-A-Za-zА-Яа-я\s]+ - [^,]+, \d+ [а-я]+)(?:\s*\([мa-zA-Zа-яА-Я]\))?/,
-    
-    // Формат с весом в граммах: бренд - название, вес г
-    /^(?:\d+)?([A-Za-zА-Яа-я][-A-Za-zА-Яа-я\s]+ - [^,]+(?:, \d+ (?:гр|г|мл|шт|кг|л)))(?:\s*\([мa-zA-Zа-яА-Я]\))?/,
-    
-    // Простой формат: только название товара
-    /^(?:\d+)?([A-Za-zА-Яа-я][-A-Za-zА-Яа-я\s]+ - [^0-9]+)(?:\s*\([мa-zA-Zа-яА-Я]\))?/
-  ];
-  
-  // Шаблон для отсеивания строк с ценами и единицами измерения
-  const nonProductPattern = /^(?:\d+[\.,]\d+|\d+[\.,]\d+\s*x\s*\d+|шт|\d+[\.,]\d+$|x$|Скидка|К оплате|Наличные|Клиент|ХР$|Продажа$|Найти$)/;
-  
-  console.log(`Всего строк для обработки: ${lines.length}`);
-  
-  // Проходим по каждой строке
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Пропускаем строки, которые точно не являются наименованиями товаров
-    if (nonProductPattern.test(line)) {
-      continue;
-    }
-    
-    // Пробуем распознать наименование товара с помощью разных шаблонов
-    let matched = false;
-    for (const pattern of productPatterns) {
-      const match = line.match(pattern);
-      if (match && match[1]) {
-        const productName = match[1].trim();
-        
-        // Убедимся, что это не служебная строка
-        if (productName.length < 5 || /^(?:Итого|Скидка|К оплате|Наличные)$/i.test(productName)) {
-          continue;
-        }
-        
-        // Инкрементируем счетчик для данного товара
-        if (products[productName]) {
-          products[productName]++;
-        } else {
-          products[productName] = 1;
-        }
-        
-        matched = true;
-        break;
-      }
-    }
-    
-    // Если не распознали строку ни одним из шаблонов, попробуем эвристический подход
-    if (!matched) {
-      // Если строка длинная и содержит буквы и цифры, возможно это товар
-      if (line.length > 10 && 
-          /[А-Яа-я]/.test(line) && 
-          !line.includes('×') && 
-          !line.includes('Итого') && 
-          !line.includes('Наличные')) {
-        
-        // Очищаем строку от типичных ненужных элементов
-        let cleanedLine = line
-          .replace(/\d+[\.,]\d+\s*x\s*\d+\s*шт/g, '')
-          .replace(/\d+[\.,]\d+/g, '')
-          .replace(/шт/g, '')
-          .trim();
-        
-        // Если после очистки осталось достаточно текста, считаем это товаром
-        if (cleanedLine.length > 10) {
-          if (products[cleanedLine]) {
-            products[cleanedLine]++;
-          } else {
-            products[cleanedLine] = 1;
-          }
-        }
-      }
-    }
-  }
-  
-  // Преобразуем объект в массив объектов
-  const result = Object.keys(products).map(name => ({
-    name,
-    quantity: products[name]
-  }));
-  
-  console.log(`Найдено наименований: ${result.length}`);
-  return result;
-}
-
-// ... existing code ...
-
-// Добавляем обработчик для кнопки парсинга чека в режиме КАССА
-function setupKassaMode() {
-    console.log('Настройка режима КАССА');
-    
-    // Проверяем, уже инициализирован ли режим
-    const existingParseBtn = document.querySelector('#parseReceiptBtn');
-    if (existingParseBtn) {
-        return; // Уже инициализирован
-    }
-    
-    // Настройка интерфейса режима КАССА
-    const fileLabel = document.querySelector('.file-label');
-    const fileHint = document.querySelector('.file-hint');
-    const fileInput = document.getElementById('fileInput');
-    
-    if (fileLabel) {
-        fileLabel.textContent = 'Выберите файл Excel заказа МС';
-    }
-    
-    if (fileHint) {
-        fileHint.innerHTML = 'Перетащите файл в эту область или нажмите кнопку ниже для выбора через диалог<br><small>(только заказ МС)</small><br><small class="file-format-hint">Поддерживаемые форматы: Excel (.xls, .xlsx)</small>';
-    }
-    
-    // Отображаем шаги для режима КАССА
-    const fileSteps = document.querySelector('.file-steps');
-    if (fileSteps) {
-        fileSteps.style.display = 'flex';
-    }
-    
-    // Обновляем настройки для выбора одного файла
-    if (fileInput) {
-        fileInput.removeAttribute('multiple');
-    }
-    
-    // Очищаем поле текста кассы
-    const kassaTextInput = document.getElementById('kassaTextInput');
-    if (kassaTextInput) {
-        kassaTextInput.value = '';
-    }
-    
-    // Добавляем кнопку для автоматического парсинга кассового чека
-    const parseReceiptBtn = document.createElement('button');
-    parseReceiptBtn.id = 'parseReceiptBtn';
-    parseReceiptBtn.className = 'btn secondary-btn';
-    parseReceiptBtn.innerHTML = '<i class="fas fa-magic"></i> Обработать чек';
-    parseReceiptBtn.title = 'Автоматически извлечь товары из текста кассового чека';
-    
-    // Вставляем кнопку рядом с существующей кнопкой вставки
-    const kassaTextContainer = document.querySelector('.kassa-text-input-container');
-    if (!kassaTextContainer) {
-        console.error('Не найден контейнер для текста кассы');
-        return;
-    }
-    
-    // Создаем или находим контейнер для кнопок
-    let kassaButtonsContainer = kassaTextContainer.querySelector('.kassa-buttons-container');
-    if (!kassaButtonsContainer) {
-        kassaButtonsContainer = document.createElement('div');
-        kassaButtonsContainer.className = 'kassa-buttons-container';
-        
-        // Добавляем стили для контейнера кнопок
-        const style = document.createElement('style');
-        style.textContent = `
-            .kassa-buttons-container {
-                display: flex;
-                gap: 10px;
-                margin-top: 10px;
-                margin-bottom: 10px;
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Добавляем существующую кнопку вставки, если она есть
-        const pasteBtn = kassaTextContainer.querySelector('.paste-kassa-btn');
-        if (pasteBtn) {
-            kassaButtonsContainer.appendChild(pasteBtn);
-        }
-        
-        kassaTextContainer.appendChild(kassaButtonsContainer);
-    }
-    
-    // Добавляем кнопку парсинга в контейнер
-    kassaButtonsContainer.appendChild(parseReceiptBtn);
-    
-    // Обработчик нажатия на кнопку парсинга чека
-    parseReceiptBtn.addEventListener('click', () => {
-        const kassaTextInput = document.querySelector('.kassa-text-input');
-        if (!kassaTextInput || !kassaTextInput.value.trim()) {
-            showNotification('error', 'Ошибка обработки', 'Вставьте текст кассового чека для обработки');
-            return;
-        }
-        
-        try {
-            // Парсим текст чека
-            const parsedProducts = parseReceipt(kassaTextInput.value);
-            
-            if (!parsedProducts.length) {
-                showNotification('warning', 'Товары не найдены', 'Не удалось извлечь товары из текста чека');
-                return;
-            }
-            
-            // Формируем новый текст в формате "Наименование - Количество"
-            const formattedText = parsedProducts.map(item => 
-                `${item.name} - ${item.quantity}`
-            ).join('\n');
-            
-            // Заменяем текст во входном поле
-            kassaTextInput.value = formattedText;
-            
-            showNotification('success', 'Чек обработан', `Успешно извлечено ${parsedProducts.length} наименований товаров`);
-        } catch (error) {
-            console.error('Ошибка при обработке чека:', error);
-            showNotification('error', 'Ошибка обработки', 'Не удалось обработать текст чека. Проверьте формат.');
-        }
-    });
-    
-    // Добавляем подсказку о функции парсинга чеков
-    const kassaTextHelp = kassaTextContainer.querySelector('.kassa-text-help');
-    if (kassaTextHelp) {
-        const parseHelp = document.createElement('div');
-        parseHelp.className = 'kassa-parse-help';
-        parseHelp.innerHTML = `
-            <div class="parse-shortcut">
-                <i class="fas fa-info-circle"></i> Для автоматического извлечения товаров из неструктурированного текста чека используйте кнопку "Обработать чек"
-            </div>
-        `;
-        kassaTextHelp.appendChild(parseHelp);
-        
-        // Добавляем стили для подсказки
-        const style = document.createElement('style');
-        style.textContent = `
-            .kassa-parse-help {
-                margin-top: 10px;
-                color: var(--secondary-text);
-                font-size: 0.9em;
-            }
-            
-            .parse-shortcut {
-                display: flex;
-                align-items: center;
-                margin-bottom: 5px;
-            }
-            
-            .parse-shortcut i {
-                margin-right: 5px;
-                color: var(--primary-color);
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-// ... existing code ...

@@ -1,7 +1,7 @@
 {
   "name": "crosscheck-pro",
   "productName": "CrossCheck PRO",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Система сравнения заказов МС и СБИС",
   "main": "main.js",
   "scripts": {
