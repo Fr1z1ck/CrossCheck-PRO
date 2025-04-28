@@ -5135,31 +5135,4 @@ th.check-column.sortable:hover {
 .kassa-text-input-container:hover .kassa-header-text {
     transform: translateX(5px);
 }
-
-/* Стили для контейнера кнопок в режиме КАССА */
-.kassa-buttons-container {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-}
-
-/* Стили для подсказки по обработке чеков */
-.kassa-parse-help {
-    margin-top: 10px;
-    color: var(--secondary-text);
-    font-size: 0.9em;
-}
-
-.parse-shortcut {
-    display: flex;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.parse-shortcut i {
-    margin-right: 5px;
-    color: var(--primary-color);
-}
   
