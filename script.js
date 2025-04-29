@@ -1958,11 +1958,9 @@ function applyFilterAndSort() {
                 valueB = b.difference || 0;
                 return (valueA - valueB) * multiplier;
             } else if (field === 'status') {
+                // Используем getStatusText для получения читаемого статуса
                 valueA = getStatusText(a.status);
                 valueB = getStatusText(b.status);
-        } else if (field === 'issue') {
-            valueA = a.issue || '';
-            valueB = b.issue || '';
             } else {
                 return 0;
             }
@@ -3540,12 +3538,14 @@ function extractProductsFromKassaText(text) {
         // Формат: номер название (примечание) цена x количество
         /^\d+\s+([A-Za-zА-Яа-я\s\-]+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
         // Формат: название (примечание) цена x количество
-        /^([A-Za-zА-Яа-я\s\-]+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/
+        /^([A-Za-zА-Яа-я\s\-]+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        // Формат: номерНазвание - для случаев, когда номер и название идут слитно
+        /^(\d+)([A-Za-zА-Яа-я].+)/
     ];
     
     // Список служебных строк для пропуска
     const skipPatterns = [
-        'Продажа', 'Найти', 'ХР', 'Скидка', 'Клиент', 'Наличные', 'К оплате',
+        'Продажа', 'Найти', 'ХР', 'Скидка', 'Клиент', 'К оплате',
         'Итого', 'Сумма', 'Чек', 'Кассир', 'Дата', 'Время', 'Сдача', 'шт'
     ];
     
@@ -3581,6 +3581,11 @@ function extractProductsFromKassaText(text) {
                     note = ` (${match[2].trim()})`;
                     price = parseFloat(match[3]);
                     quantity = parseInt(match[4]);
+                } else if (match.length === 3) {
+                    // Формат с номером и названием слитно (новый формат)
+                    productName = match[2].trim();
+                    // Для этого формата цена и количество должны быть на следующих строках
+                    // Продолжаем обработку ниже
                 }
                 break;
             }
@@ -3588,10 +3593,14 @@ function extractProductsFromKassaText(text) {
         
         // Если не удалось распознать по основным форматам,
         // проверяем формат типа "название" + "цена" + "x" + "количество" на отдельных строках
-        if (!matched) {
+        if (!matched || (matched && productName && !price)) {
             // Проверяем, начинается ли строка с известных брендов или является названием товара
-            if (line.match(/^[A-Za-zА-Яа-я]/) && (line.includes(' - ') || line.includes('('))) {
-                productName = line.trim();
+            if ((line.match(/^[A-Za-zА-Яа-я]/) && (line.includes(' - ') || line.includes('('))) || 
+                (matched && productName)) {
+                
+                if (!productName) {
+                    productName = line.trim();
+                }
                 
                 // Проверяем следующие строки на наличие цены и количества
                 let j = i + 1;

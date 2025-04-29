@@ -267,11 +267,12 @@ Dark Side Core - Код Черри (Вишня), 30 гр (м)
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th style="width: 40px;" title="Отметка о проверке">☑</th>
-                            <th title="Нажмите для сортировки по коду товара">Код</th>
-                            <th title="Нажмите для сортировки по наименованию">Наименование</th>
-                            <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
-                            <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
+                            <th style="width: 40px;" title="Отметка о проверке" class="sortable check-column" data-field="checked">☑</th>
+                            <th title="Нажмите для сортировки по коду товара" class="sortable" data-field="code">Код <i class="fas fa-sort"></i></th>
+                            <th title="Нажмите для сортировки по наименованию" class="sortable" data-field="name">Наименование <i class="fas fa-sort"></i></th>
+                            <th title="Нажмите для сортировки по количеству в заказе" class="sortable" data-field="orderQuantity">Кол-во в заказе <i class="fas fa-sort"></i></th>
+                            <th title="Нажмите для сортировки по количеству в СБИС" class="sortable" data-field="scanQuantity">Кол-во в СБИС <i class="fas fa-sort"></i></th>
+                            <th title="Нажмите для сортировки по статусу" class="sortable" data-field="status">Статус <i class="fas fa-sort"></i></th>
                         </tr>
                     </thead>
                     <tbody id="allTable"></tbody>
@@ -303,7 +304,7 @@ Dark Side Core - Код Черри (Вишня), 30 гр (м)
                             <th title="Нажмите для сортировки по наименованию">Наименование</th>
                             <th title="Нажмите для сортировки по количеству в заказе">Кол-во в заказе</th>
                             <th title="Нажмите для сортировки по количеству в СБИС">Кол-во в СБИС</th>
-                            <th title="Нажмите для сортировки по проблеме">Проблема</th>
+                            <th title="Нажмите для сортировки по статусу">Статус</th>
                         </tr>
                     </thead>
                     <tbody id="errorsTable"></tbody>
@@ -360,7 +361,7 @@ Dark Side Core - Код Черри (Вишня), 30 гр (м)
                             <th style="width: 40px;" title="Отметка о проверке">☑</th>
                             <th title="Нажмите для сортировки по коду товара">Код</th>
                             <th title="Нажмите для сортировки по наименованию">Наименование</th>
-                            <th title="Нажмите для сортировки по проблеме">Проблема</th>
+                            <th title="Нажмите для сортировки по статусу">Статус</th>
                         </tr>
                     </thead>
                     <tbody id="incompleteTable"></tbody>
@@ -969,6 +970,19 @@ Dark Side Core - Код Черри (Вишня), 30 гр (м)
             <div class="modal-body changelog-body">
                 <div class="changelog-entry">
                     <div class="version-header">
+                        <h4>Версия 1.0.3</h4>
+                        <span class="version-date">30.04.2025</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="update-tag">Обновлено</span> Улучшен алгоритм обработки текстовых данных из кассы</li>
+                        <li><span class="feature-tag">Добавлено</span> Поддержка различных форматов номеров товаров (слитно с названием)</li>
+                        <li><span class="update-tag">Улучшено</span> Оптимизирована работа с большими объемами данных</li>
+                        <li><span class="fix-tag">Исправлено</span> Исправлена ошибка при обработке многострочных наименований товаров</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-entry">
+                    <div class="version-header">
                         <h4>Версия 1.0.2</h4>
                         <span class="version-date">29.04.2025</span>
                     </div>
@@ -979,7 +993,7 @@ Dark Side Core - Код Черри (Вишня), 30 гр (м)
                         <li><span class="update-tag">Улучшено</span> Повышена надежность сравнения товаров по названиям</li>
                     </ul>
                 </div>
-
+                
                 <div class="changelog-entry">
                     <div class="version-header">
                         <h4>Версия 1.0.1</h4>
