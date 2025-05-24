@@ -217,11 +217,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
-        radial-gradient(circle at 20% 20%, rgba(237, 242, 247, 0.4) 0%, transparent 25%),
-        radial-gradient(circle at 80% 10%, rgba(237, 242, 247, 0.3) 0%, transparent 20%),
-        radial-gradient(circle at 10% 80%, rgba(237, 242, 247, 0.4) 0%, transparent 25%),
-        radial-gradient(circle at 90% 90%, rgba(237, 242, 247, 0.3) 0%, transparent 20%);
+    background-color: var(--bg-color);
     z-index: -1;
     pointer-events: none;
 }
@@ -344,11 +340,7 @@ h4, h5 {
 
 /* Декоративные элементы для фона */
 body::before {
-    background: 
-        radial-gradient(circle at 20% 20%, rgba(25, 30, 40, 0.7) 0%, transparent 25%),
-        radial-gradient(circle at 80% 10%, rgba(30, 35, 45, 0.6) 0%, transparent 20%),
-        radial-gradient(circle at 10% 80%, rgba(25, 30, 40, 0.7) 0%, transparent 25%),
-        radial-gradient(circle at 90% 90%, rgba(30, 35, 45, 0.6) 0%, transparent 20%);
+    background: none;
 }
 
 /* Темная тема */
@@ -3734,11 +3726,12 @@ th.check-column.sortable:hover {
 }
 
 .light-theme body::before {
-    background: 
-        radial-gradient(circle at 20% 20%, rgba(230, 240, 250, 0.5) 0%, transparent 25%),
-        radial-gradient(circle at 80% 10%, rgba(230, 240, 250, 0.4) 0%, transparent 20%),
-        radial-gradient(circle at 10% 80%, rgba(230, 240, 250, 0.5) 0%, transparent 25%),
-        radial-gradient(circle at 90% 90%, rgba(230, 240, 250, 0.4) 0%, transparent 20%);
+    background: none;
+    background-color: var(--bg-color);
+    background-image: 
+        linear-gradient(to right, rgba(240, 249, 255, 0.2) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(240, 249, 255, 0.2) 1px, transparent 1px);
+    background-size: 50px 50px;
 }
 
 .light-theme header {
@@ -3747,17 +3740,13 @@ th.check-column.sortable:hover {
 }
 
 .light-theme header::before {
-    background-image: 
-        radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.03) 0%, transparent 30%),
-        radial-gradient(circle at 90% 30%, rgba(59, 130, 246, 0.02) 0%, transparent 20%),
-        radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.03) 0%, transparent 25%),
-        radial-gradient(circle at 70% 90%, rgba(59, 130, 246, 0.02) 0%, transparent 20%);
+    background-image: none;
+    background-color: transparent;
 }
 
 .light-theme header::after {
-    background-image: 
-        linear-gradient(45deg, transparent 48%, rgba(59, 130, 246, 0.03) 49%, rgba(59, 130, 246, 0.03) 51%, transparent 52%),
-        linear-gradient(-45deg, transparent 48%, rgba(59, 130, 246, 0.03) 49%, rgba(59, 130, 246, 0.03) 51%, transparent 52%);
+    background-image: none;
+    background-color: transparent;
 }
 
 .light-theme h1 {

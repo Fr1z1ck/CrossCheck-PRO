@@ -3531,22 +3531,35 @@ function extractProductsFromKassaText(text) {
     
     // Регулярные выражения для различных форматов
     const formats = [
+        // Формат: номер + название (номер и название идут слитно)
+        /^(\d+)([A-Za-zА-Яа-я].+)/,
+        
         // Формат: номер название цена x количество
-        /^\d+\s+([A-Za-zА-Яа-я\s\-\(\)]+?)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        /^\d+\s+([A-Za-zА-Яа-я\s\-\(\)\.,"']+?)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        
         // Формат: название цена x количество
-        /^([A-Za-zА-Яа-я\s\-\(\)]+?)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        /^([A-Za-zА-Яа-я\s\-\(\)\.,"']+?)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        
         // Формат: номер название (примечание) цена x количество
-        /^\d+\s+([A-Za-zА-Яа-я\s\-]+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        /^\d+\s+([A-Za-zА-Яа-я\s\-\.,"']+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        
         // Формат: название (примечание) цена x количество
-        /^([A-Za-zА-Яа-я\s\-]+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
-        // Формат: номерНазвание - для случаев, когда номер и название идут слитно
-        /^(\d+)([A-Za-zА-Яа-я].+)/
+        /^([A-Za-zА-Яа-я\s\-\.,"']+)\s*\(([^)]+)\)\s+(\d+\.?\d*)\s*x\s*(\d+)/,
+        
+        // Формат с меткой NEW: номер1. NEW название
+        /^(\d+)1\.\s*NEW\s+([A-Za-zА-Яа-я].+)/,
+        
+        // Формат с просто меткой NEW: 1. NEW название
+        /^1\.\s*NEW\s+([A-Za-zА-Яа-я].+)/,
+        
+        // Формат для файла 6.txt: Название с тире или дефисом
+        /^([A-Za-zА-Яа-я].+\s+[–-]\s+.+)$/
     ];
     
     // Список служебных строк для пропуска
     const skipPatterns = [
         'Продажа', 'Найти', 'ХР', 'Скидка', 'Клиент', 'К оплате',
-        'Итого', 'Сумма', 'Чек', 'Кассир', 'Дата', 'Время', 'Сдача', 'шт'
+        'Итого', 'Сумма', 'Чек', 'Кассир', 'Дата', 'Время', 'Сдача'
     ];
     
     // Проходим по строкам и обрабатываем их
@@ -3569,77 +3582,139 @@ function extractProductsFromKassaText(text) {
             const match = line.match(format);
             if (match) {
                 matched = true;
-                // Извлекаем данные в зависимости от формата
-                if (match.length === 4) {
+                
+                if (format.toString().includes('\\d+\\)\\([A-Za-zА-Яа-я]')) {
+                    // Формат с номером и названием слитно
+                    productName = match[2].trim();
+                    // Для этого формата цена и количество должны быть на следующих строках
+                } else if (match.length === 5) {
+                    // Форматы с примечанием
+                    productName = match[1].trim();
+                    note = match[2] ? ` (${match[2].trim()})` : '';
+                    price = parseFloat(match[3]);
+                    quantity = parseInt(match[4]);
+                } else if (match.length === 4) {
                     // Форматы без примечания
                     productName = match[1].trim();
                     price = parseFloat(match[2]);
                     quantity = parseInt(match[3]);
-                } else if (match.length === 5) {
-                    // Форматы с примечанием
-                    productName = match[1].trim();
-                    note = ` (${match[2].trim()})`;
-                    price = parseFloat(match[3]);
-                    quantity = parseInt(match[4]);
                 } else if (match.length === 3) {
-                    // Формат с номером и названием слитно (новый формат)
-                    productName = match[2].trim();
+                    // Формат с номером и названием слитно или с меткой NEW
+                    if (line.includes('NEW')) {
+                        productName = match[2].trim();
+                    } else {
+                        productName = match[2].trim();
+                    }
                     // Для этого формата цена и количество должны быть на следующих строках
-                    // Продолжаем обработку ниже
+                } else if (match.length === 2) {
+                    // Формат только с меткой NEW и названием (без номера) или формат из 6.txt
+                    productName = match[1].trim();
+                    // Для этого формата цена и количество должны быть на следующих строках
                 }
                 break;
             }
         }
         
-        // Если не удалось распознать по основным форматам,
-        // проверяем формат типа "название" + "цена" + "x" + "количество" на отдельных строках
-        if (!matched || (matched && productName && !price)) {
-            // Проверяем, начинается ли строка с известных брендов или является названием товара
-            if ((line.match(/^[A-Za-zА-Яа-я]/) && (line.includes(' - ') || line.includes('('))) || 
-                (matched && productName)) {
+        // Если у нас есть имя товара, но нет цены и количества, 
+        // ищем их в следующих строках (особенно для формата из 6.txt)
+        if (productName && (!price || !quantity)) {
+            let j = i + 1;
+            let priceFound = false;
+            let quantityFound = false;
+            let shippingFound = false; // Флаг для обнаружения строки "шт"
+            
+            // Максимальное количество строк для поиска цены и количества
+            const maxLinesToSearch = 8;
+            
+            while (j < Math.min(i + maxLinesToSearch, lines.length) && (!priceFound || !quantityFound)) {
+                const nextLine = lines[j].trim();
                 
-                if (!productName) {
-                    productName = line.trim();
+                // Пропускаем пустые строки
+                if (!nextLine) {
+                    j++;
+                    continue;
                 }
                 
-                // Проверяем следующие строки на наличие цены и количества
+                // Проверяем, является ли строка ценой (формат "xxx.xx" или "xxx")
+                if (!priceFound && /^\d+(?:\.\d+)?$/.test(nextLine)) {
+                    price = parseFloat(nextLine);
+                    priceFound = true;
+                    j++;
+                    continue;
+                }
+                
+                // Проверяем, является ли строка символом "x"
+                if (priceFound && nextLine === 'x') {
+                    j++;
+                    continue;
+                }
+                
+                // Проверяем, является ли строка количеством (формат "x")
+                if (priceFound && !quantityFound && /^\d+$/.test(nextLine)) {
+                    quantity = parseInt(nextLine);
+                    quantityFound = true;
+                    j++;
+                    
+                    // После количества обычно идет строка "шт", пропустим её
+                    if (j < lines.length && lines[j].trim() === 'шт') {
+                        shippingFound = true;
+                        j++;
+                    }
+                    
+                    // Обновляем индекс основного цикла
+                    i = j;
+                    break;
+                }
+                
+                // Если строка не соответствует ожидаемому формату, двигаемся дальше
+                j++;
+            }
+            
+            matched = priceFound && quantityFound;
+        }
+        
+        // Если не удалось распознать по основным форматам,
+        // пробуем извлечь название и цену из строки
+        if (!matched && !productName) {
+            // Пробуем найти формат с цифровым началом (номер товара) и названием
+            const numNameMatch = line.match(/^(\d+)([A-Za-zА-Яа-я].+)/);
+            if (numNameMatch) {
+                productName = numNameMatch[2].trim();
+                
+                // Ищем цену и количество на следующих строках
                 let j = i + 1;
                 let priceFound = false;
                 let quantityFound = false;
                 
-                // Ищем до 5 строк вперед для поиска цены и количества
-                while (j < Math.min(i + 6, lines.length) && (!priceFound || !quantityFound)) {
+                while (j < Math.min(i + 8, lines.length) && (!priceFound || !quantityFound)) {
                     const nextLine = lines[j].trim();
                     
-                    // Пропускаем пустые строки
                     if (!nextLine) {
                         j++;
                         continue;
                     }
                     
-                    // Проверяем, является ли строка ценой
-                    if (!priceFound && /^\d+[\s\.]?\d*$/.test(nextLine)) {
-                        price = parseFloat(nextLine.replace(/\s/g, ''));
+                    if (!priceFound && /^\d+(?:\.\d+)?$/.test(nextLine)) {
+                        price = parseFloat(nextLine);
                         priceFound = true;
                         j++;
                         continue;
                     }
                     
-                    // Проверяем, является ли строка символом "x"
                     if (priceFound && nextLine === 'x') {
                         j++;
                         continue;
                     }
                     
-                    // Проверяем, является ли строка количеством
                     if (priceFound && !quantityFound && /^\d+$/.test(nextLine)) {
                         quantity = parseInt(nextLine);
                         quantityFound = true;
-                        i = j; // Перемещаем указатель основного цикла
+                        
+                        // Обновляем индекс основного цикла
+                        i = j;
                         break;
                     }
                     
-                    // Если строка не соответствует ожидаемому формату, двигаемся дальше
                     j++;
                 }
                 
@@ -3647,50 +3722,22 @@ function extractProductsFromKassaText(text) {
             }
         }
         
-        // Если не удалось распознать по основным форматам, 
-        // пробуем извлечь название до метки количества
-        if (!matched && line.includes('x')) {
-            const parts = line.split('x');
-            if (parts.length >= 2) {
-                // Ищем цену и название в первой части
-                const firstPart = parts[0].trim();
-                const priceMatch = firstPart.match(/(\d+[\s\.]\d*|\d+)$/);
-                if (priceMatch) {
-                    price = parseFloat(priceMatch[1].replace(/\s/g, ''));
-                    productName = firstPart.substring(0, firstPart.length - priceMatch[1].length).trim();
-                    // Удаляем начальные цифры и пробелы, если они есть
-                    productName = productName.replace(/^\d+\s*/, '');
-                    
-                    // Извлекаем количество из второй части
-                    const quantityMatch = parts[1].match(/\d+/);
-                    if (quantityMatch) {
-                        quantity = parseInt(quantityMatch[0]);
-                        matched = true;
-                    }
-                }
-            }
-        }
-        
-        // Если всё равно не удалось извлечь название, пробуем взять начало строки до цены
-        if (!matched && !productName && /^\d+/.test(line)) {
-            const nameStart = line.search(/[A-Za-zА-Яа-я]/);
-            const pricePos = line.indexOf('x') > -1 ? line.indexOf('x') : line.length;
-            
-            if (nameStart > -1 && nameStart < pricePos) {
-                productName = line.substring(nameStart, pricePos).trim();
-                matched = true;
-            }
-        }
-        
         // Если получили название товара, добавляем или обновляем его в Map
         if (productName) {
             // Добавляем примечание к названию, если есть
-            if (note) {
+            if (note && !productName.includes(note)) {
                 productName += note;
             }
             
             // Очищаем название от лишних пробелов и символов
             productName = productName.replace(/\s+/g, ' ').trim();
+            
+            // Удаляем номер товара из начала названия, если он там остался
+            productName = productName.replace(/^\d+\s*/, '');
+            
+            // Удаляем метку NEW из названия, если она есть
+            productName = productName.replace(/^1\.\s*NEW\s+/, '')
+                                    .replace(/^NEW\s+/, '');
             
             console.log(`Извлечен товар: "${productName}" (${quantity} шт. по ${price} руб.)`);
             
@@ -3723,9 +3770,25 @@ function extractProductsFromKassaText(text) {
     const multipleItems = products.filter(p => p.quantity > 1);
     if (multipleItems.length > 0) {
         console.log(`Товары с количеством > 1 (${multipleItems.length} шт.):`);
+        
+        // Группировка по количеству для упрощения анализа
+        const quantityGroups = {};
         multipleItems.forEach(p => {
-            console.log(`- ${p.name}: ${p.quantity} шт. (${p.price} руб. за шт.)`);
+            if (!quantityGroups[p.quantity]) {
+                quantityGroups[p.quantity] = [];
+            }
+            quantityGroups[p.quantity].push(p);
         });
+        
+        // Вывод сгруппированных товаров
+        Object.keys(quantityGroups)
+            .sort((a, b) => parseInt(b) - parseInt(a))
+            .forEach(qty => {
+                console.log(`${qty} шт. (${quantityGroups[qty].length} товаров):`);
+                quantityGroups[qty].forEach(p => {
+                    console.log(`- ${p.name}: ${p.quantity} шт. (${p.price} руб. за шт.)`);
+                });
+            });
     }
     
     return products;
